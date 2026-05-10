@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/app.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "Frontend/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/app.py"
+    },
+    {
+      "src": "/(.*\\.[a-zA-Z0-9]{0,5})$",
+      "dest": "Frontend/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "Frontend/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Requested-With"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "API_KEY": "@api_key"
+  }
+}
