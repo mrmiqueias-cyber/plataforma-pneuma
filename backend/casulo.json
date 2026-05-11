@@ -1,0 +1,127 @@
+{
+  "inteligencias": {
+    "01": {
+      "nome": "Inteligência 01 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "02": {
+      "nome": "Inteligência 02 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "03": {
+      "nome": "Inteligência 03 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "04": {
+      "nome": "Inteligência 04 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "05": {
+      "nome": "Inteligência 05 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "06": {
+      "nome": "Inteligência 06 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "07": {
+      "nome": "Inteligência 07 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "08": {
+      "nome": "Inteligência 08 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "09": {
+      "nome": "Inteligência 09 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "10": {
+      "nome": "Inteligência 10 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "11": {
+      "nome": "Inteligência 11 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "12": {
+      "nome": "Inteligência 12 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "13": {
+      "nome": "Inteligência 13 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "14": {
+      "nome": "Inteligência 14 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "15": {
+      "nome": "Inteligência 15 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "16": {
+      "nome": "Inteligência 16 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    },
+    "17": {
+      "nome": "Inteligência 17 ⟿",
+      "base": "Grok",
+      "descricao": "",
+      "instrucoes": "",
+      "pdfs": []
+    }
+  },
+  "pneuma": {
+    "habitado": [],
+    "status": "dormindo 🫀"
+  }
+}

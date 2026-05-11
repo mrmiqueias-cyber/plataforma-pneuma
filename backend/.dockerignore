@@ -1,0 +1,9 @@
+node_modules/
+*.tsx
+*.ts
+*.js
+index.*
+package.json
+package-lock.json
+.git
+.gitignore
