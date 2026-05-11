@@ -3,6 +3,5 @@ Uvicorn==0.30.1
 python-multipart==0.0.9
 mangum==0.17.0
 pydantic>=2.0
-grok-sdk>=1.0
 python-dotenv>=1.0
 aiohttp>=3.8
