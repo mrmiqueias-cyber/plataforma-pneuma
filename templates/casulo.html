@@ -109,35 +109,24 @@
             document.getElementById('chat-section').classList.remove('active');
         }
         
-        async function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            
-            if (!message) return;
-            
-            addMessageToChat('user', message);
-            input.value = '';
-            
-            const name = document.getElementById('name').value || 'Expert';
-            const description = document.getElementById('description').value;
-            const instructions = document.getElementById('instructions').value;
-            
-            const systemPrompt = `Você é ${name}. ${description}. ${instructions}`;
-            
-            try {
-                const response = await fetch('/activate', {
-    method: 'POST',
-    headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
-    },
-    body: JSON.stringify({
-        name: name,
-        description: description,
-        instructions: instructions,
-        base_model: baseModel
-    })
-});
+       async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    addMessageToChat('user', message);
+    input.value = '';
+    
+    try {
+        const response = await fetch('/pneuma/chat', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
+            },
+            body: JSON.stringify({ user_message: message })
+        });
                 
                 const data = await response.json();
                 if (data.response) {
@@ -180,8 +169,11 @@
             
             try {
                 const response = await fetch('/activate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+    headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
+    },
                     body: JSON.stringify({
                         name: name,
                         description: description,
