@@ -1,104 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import requests
-import sqlite3
-import os
-from dotenv import load_dotenv
-import json
-from datetime import datetime
-
-load_dotenv('.env')
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-if not DEEPSEEK_API_KEY:
-    raise ValueError("DEEPSEEK_API_KEY não definida no .env")
-
-# Inicializar banco de dados
-def init_db():
-    conn = sqlite3.connect('casulo.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS experts
-                 (id INTEGER PRIMARY KEY, name TEXT, description TEXT, 
-                  instructions TEXT, base_model TEXT, pdfs TEXT, created_at TEXT)''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
-class ChatMessage(BaseModel):
-    system_prompt: str
-    user_message: str
-
-class ExpertData(BaseModel):
-    name: str
-    description: str
-    instructions: str
-    base_model: str
-def call_claude(system_prompt: str, user_message: str) -> str:
-    url = "https://api.deepseek.com/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "model": "deepseek-chat",
-        "max_tokens": 2048,
-        "system": system_prompt,
-        "messages": [
-            {
-                "role": "user",
-                "content": user_message
-            }
-        ]
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        
-        if response.status_code != 200:
-            error_detail = response.text
-            return f"Erro {response.status_code}: {error_detail}"
-        
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
-    
-    except requests.exceptions.Timeout:
-        return "Erro: Timeout na conexão com DeepSeek (30s)"
-    except requests.exceptions.ConnectionError as e:
-        return f"Erro de conexão: {str(e)}"
-    except Exception as e:
-        return f"Erro ao conectar com DeepSeek: {str(e)}"
-@app.post("/expert/chat")
-def expert_chat(request: ChatMessage):
-    response = call_claude(request.system_prompt, request.user_message)
-    return {"response": response}
-
-@app.post("/activate")
-def activate_expert(expert: ExpertData):
-    conn = sqlite3.connect('casulo.db')
-    c = conn.cursor()
-    c.execute('''INSERT INTO experts (name, description, instructions, base_model, created_at)
-                 VALUES (?, ?, ?, ?, ?)''',
-              (expert.name, expert.description, expert.instructions, expert.base_model, datetime.now().isoformat()))
-    conn.commit()
-    conn.close()
-    return {"status": "Expert ativado com sucesso"}
-
-@app.get("/casulo", response_class=HTMLResponse)
-def get_casulo():
-    return """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -166,10 +66,6 @@ def get_casulo():
                         <option value="deepseek">DeepSeek</option>
                     </select>
                     
-                    <label for="pdfs">Arquivos de Conhecimento (PDF, até 4):</label>
-                    <input type="file" id="pdfs" accept=".pdf" multiple>
-                    <div id="file-info" style="color: #ffd700; font-size: 14px; margin-bottom: 15px;"></div>
-                    
                     <label for="instructions">Instruções (0-20.000 caracteres):</label>
                     <textarea id="instructions" maxlength="20000" placeholder="Digite as instruções completas do Expert, incluindo símbolos, descrição e comportamento esperado"></textarea>
                     
@@ -191,10 +87,7 @@ def get_casulo():
             </div>
         </main>
     </div>
-
     <script>
-        let selectedFiles = [];
-
         function openChat() {
             const name = document.getElementById('name').value || 'Expert';
             const instructions = document.getElementById('instructions').value;
@@ -210,12 +103,12 @@ def get_casulo():
             document.getElementById('chat-messages').innerHTML = '';
             document.getElementById('chat-input').focus();
         }
-
+        
         function closeChat() {
             document.getElementById('form-section').style.display = 'block';
             document.getElementById('chat-section').classList.remove('active');
         }
-
+        
         async function sendMessage() {
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
@@ -249,7 +142,7 @@ def get_casulo():
                 addMessageToChat('expert', 'Erro de conexão. Tente novamente.');
             }
         }
-
+        
         function addMessageToChat(sender, text) {
             const messagesDiv = document.getElementById('chat-messages');
             const messageEl = document.createElement('div');
@@ -258,20 +151,14 @@ def get_casulo():
             messagesDiv.appendChild(messageEl);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-
-        document.getElementById('pdfs').addEventListener('change', function(e) {
-            selectedFiles = Array.from(e.target.files).slice(0, 4);
-            const fileNames = selectedFiles.map(f => f.name).join(', ');
-            document.getElementById('file-info').textContent = fileNames ? `Arquivos: ${fileNames}` : '';
-        });
-
+        
         document.getElementById('test-btn').addEventListener('click', openChat);
         document.getElementById('close-chat-btn').addEventListener('click', closeChat);
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         document.getElementById('chat-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendMessage();
         });
-
+        
         document.getElementById('activate-btn').addEventListener('click', async function() {
             const name = document.getElementById('name').value;
             const description = document.getElementById('description').value;
@@ -304,8 +191,4 @@ def get_casulo():
         });
     </script>
 </body>
-</html>"""
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+</html>

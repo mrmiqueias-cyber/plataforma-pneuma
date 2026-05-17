@@ -1,3 +1,0 @@
-git add vercel.json
-git commit -m "Simplify vercel.json for FastAPI + Vue deployment"
-git push origin main
