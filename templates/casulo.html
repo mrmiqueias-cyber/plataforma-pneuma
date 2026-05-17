@@ -125,11 +125,19 @@
             const systemPrompt = `Você é ${name}. ${description}. ${instructions}`;
             
             try {
-                const response = await fetch('/expert/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ system_prompt: systemPrompt, user_message: message })
-                });
+                const response = await fetch('/activate', {
+    method: 'POST',
+    headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
+    },
+    body: JSON.stringify({
+        name: name,
+        description: description,
+        instructions: instructions,
+        base_model: baseModel
+    })
+});
                 
                 const data = await response.json();
                 if (data.response) {
