@@ -14,7 +14,22 @@ from dotenv import load_dotenv
 
 load_dotenv('.env')
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
+# Imports para as IAs
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app)  # ← ADICIONA AQUI
 
@@ -139,7 +154,7 @@ def casulo():
 def expert_chat():
     data = request.get_json()
     user_message = data.get('user_message', '')
-    model = data.get('model', 'claude')  # ← RECEBE O MODELO DO CASULO
+    model = data.get('model', 'claude')
     
     # Busca Expert no banco (se existir)
     conn = sqlite3.connect('casulo.db')
@@ -148,35 +163,74 @@ def expert_chat():
     expert = c.fetchone()
     conn.close()
     
-    # Se houver Expert, integra ao system prompt. Se não, usa prompt padrão.
+    # Se houver Expert, integra ao system prompt
     if expert:
         name, description, instructions = expert
         system_prompt = f"Você é {name}. {description}. {instructions}"
     else:
         system_prompt = "Você é um assistente inteligente e prestativo."
     
-    # Roteia para a IA correta baseado no modelo selecionado
-    response = route_to_model(model, system_prompt, user_message)
-    return jsonify({"response": response})
-
-@app.route('/activate', methods=['POST'])
-@requires_auth
-def activate_expert():
-    data = request.get_json()
-    name = data.get('name', '')
-    description = data.get('description', '')
-    instructions = data.get('instructions', '')
-    base_model = data.get('base_model', '')
+    # Roteia para a IA correta
+    if model == 'claude':
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        if not api_key:
+            return jsonify({"response": "Erro: ANTHROPIC_API_KEY não configurada"})
+        
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            message = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=2048,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_message}]
+            )
+            return jsonify({"response": message.content[0].text})
+        except Exception as e:
+            return jsonify({"response": f"Erro Claude: {str(e)}"})
     
-    conn = sqlite3.connect('casulo.db')
-    c = conn.cursor()
-    c.execute('''INSERT INTO experts (name, description, instructions, base_model, created_at)
-                 VALUES (?, ?, ?, ?, ?)''',
-              (name, description, instructions, base_model, datetime.now().isoformat()))
-    conn.commit()
-    conn.close()
+    elif model == 'grok':
+        api_key = os.getenv('XAI_API_KEY')
+        if not api_key:
+            return jsonify({"response": "Erro: XAI_API_KEY não configurada"})
+        
+        try:
+            from openai import OpenAI
+            client = OpenAI(base_url="https://api.x.ai/v1", api_key=api_key)
+            response = client.chat.completions.create(
+                model="grok-beta",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                max_tokens=2048
+            )
+            return jsonify({"response": response.choices[0].message.content})
+        except Exception as e:
+            return jsonify({"response": f"Erro Grok: {str(e)}"})
     
-    return jsonify({"status": "Expert ativado com sucesso"})
+    elif model == 'deepseek':
+        return jsonify({"response": call_deepseek(system_prompt, user_message)})
+    
+    elif model == 'gemini':
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            return jsonify({"response": "Erro: GEMINI_API_KEY não configurada"})
+        
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model_obj = genai.GenerativeModel(
+                model_name="gemini-1.5-flash",
+                system_instruction=system_prompt
+            )
+            response = model_obj.generate_content(user_message)
+            return jsonify({"response": response.text})
+        except Exception as e:
+            return jsonify({"response": f"Erro Gemini: {str(e)}"})
+    
+    else:
+        return jsonify({"response": "Modelo não reconhecido"})
 
 # Rotas PIX
 @app.route('/pix/qrcode')
