@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template, Response, send_file, jsonify
 from functools import wraps
+from flask_cors import CORS  
 import os
 import qrcode
 from io import BytesIO
@@ -14,6 +15,8 @@ from dotenv import load_dotenv
 load_dotenv('.env')
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+CORS(app)  # ← ADICIONA AQUI
 
 # PIX configuration
 PIX_KEY = os.getenv('PIX_KEY', 'pneuma@example.com')
