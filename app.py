@@ -180,7 +180,7 @@ def expert_chat():
             import anthropic
             client = anthropic.Anthropic(api_key=api_key)
             message = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet",
                 max_tokens=2048,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}]
@@ -394,7 +394,7 @@ def route_to_model(model, system_prompt, user_message):
             import anthropic
             client = anthropic.Anthropic(api_key=api_key)
             message = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet",
                 max_tokens=2048,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}]
@@ -507,7 +507,7 @@ def claude_chat():
         
         def generate():
             with client.messages.stream(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet",
                 max_tokens=4096,
                 messages=[{"role": m["role"], "content": m["content"]} for m in messages],
                 stream=True
