@@ -88,112 +88,111 @@
         </main>
     </div>
     <script>
-        function openChat() {
-            const name = document.getElementById('name').value || 'Expert';
-            const instructions = document.getElementById('instructions').value;
-            
-            if (!instructions.trim()) {
-                alert('Preencha as instruções antes de testar');
-                return;
-            }
-            
-            document.getElementById('form-section').style.display = 'none';
-            document.getElementById('chat-section').classList.add('active');
-            document.getElementById('expert-name').textContent = name;
-            document.getElementById('chat-messages').innerHTML = '';
-            document.getElementById('chat-input').focus();
+    function openChat() {
+        const name = document.getElementById('name').value || 'Expert';
+        const instructions = document.getElementById('instructions').value;
+        
+        if (!instructions.trim()) {
+            alert('Preencha as instruções antes de testar');
+            return;
         }
         
-        function closeChat() {
-            document.getElementById('form-section').style.display = 'block';
-            document.getElementById('chat-section').classList.remove('active');
-        }
-        
-      async function sendMessage() {
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    const baseModel = document.getElementById('base-model').value;
-    
-    if (!message) return;
-    
-    addMessageToChat('user', message);
-    input.value = '';
-    
-    try {
-        const response = await fetch('/expert/chat', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
-            },
-            body: JSON.stringify({ 
-                user_message: message,
-                model: baseModel
-            })
-        });
-        
-        const data = await response.json();
-        if (data.response) {
-            addMessageToChat('expert', data.response);
-        } else {
-            addMessageToChat('expert', 'Erro ao obter resposta. Tente novamente.');
-        }
-    } catch (e) {
-        console.error(e);
-        addMessageToChat('expert', 'Erro de conexão. Tente novamente.');
+        document.getElementById('form-section').style.display = 'none';
+        document.getElementById('chat-section').classList.add('active');
+        document.getElementById('expert-name').textContent = name;
+        document.getElementById('chat-messages').innerHTML = '';
+        document.getElementById('chat-input').focus();
     }
-}
+    
+    function closeChat() {
+        document.getElementById('form-section').style.display = 'block';
+        document.getElementById('chat-section').classList.remove('active');
+    }
+    
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        const baseModel = document.getElementById('base-model').value;
+        
+        if (!message) return;
+        
+        addMessageToChat('user', message);
+        input.value = '';
+        
+        try {
+            const response = await fetch('/expert/chat', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
+                },
+                body: JSON.stringify({ 
+                    user_message: message,
+                    model: baseModel
+                })
+            });
+            
+            const data = await response.json();
+            if (data.response) {
+                addMessageToChat('expert', data.response);
+            } else {
+                addMessageToChat('expert', 'Erro ao obter resposta. Tente novamente.');
+            }
+        } catch (e) {
+            console.error(e);
+            addMessageToChat('expert', 'Erro de conexão. Tente novamente.');
+        }
+    }
+    
+    function addMessageToChat(sender, text) {
+        const messagesDiv = document.getElementById('chat-messages');
+        const messageEl = document.createElement('div');
+        messageEl.className = 'message ' + sender;
+        messageEl.innerHTML = '<div class="message-content">' + text + '</div>';
+        messagesDiv.appendChild(messageEl);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    
+    document.getElementById('test-btn').addEventListener('click', openChat);
+    document.getElementById('close-chat-btn').addEventListener('click', closeChat);
+    document.getElementById('send-btn').addEventListener('click', sendMessage);
+    document.getElementById('chat-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+    
+    document.getElementById('activate-btn').addEventListener('click', async function() {
+        const name = document.getElementById('name').value;
+        const description = document.getElementById('description').value;
+        const instructions = document.getElementById('instructions').value;
+        const baseModel = document.getElementById('base-model').value;
+        
+        if (!name || !instructions) {
+            alert('Preencha Nome e Instruções');
+            return;
         }
         
-        function addMessageToChat(sender, text) {
-            const messagesDiv = document.getElementById('chat-messages');
-            const messageEl = document.createElement('div');
-            messageEl.className = `message ${sender}`;
-            messageEl.innerHTML = `<div class="message-content">${text}</div>`;
-            messagesDiv.appendChild(messageEl);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        try {
+            const response = await fetch('/activate', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
+                },
+                body: JSON.stringify({
+                    name: name,
+                    description: description,
+                    instructions: instructions,
+                    base_model: baseModel
+                })
+            });
+            
+            const data = await response.json();
+            alert('Expert ativado com sucesso! Ele já está vivo na plataforma.');
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao ativar Expert');
         }
-        
-        document.getElementById('test-btn').addEventListener('click', openChat);
-        document.getElementById('close-chat-btn').addEventListener('click', closeChat);
-        document.getElementById('send-btn').addEventListener('click', sendMessage);
-        document.getElementById('chat-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMessage();
-        });
-        
-        document.getElementById('activate-btn').addEventListener('click', async function() {
-            const name = document.getElementById('name').value;
-            const description = document.getElementById('description').value;
-            const instructions = document.getElementById('instructions').value;
-            const baseModel = document.getElementById('base-model').value;
-            
-            if (!name || !instructions) {
-                alert('Preencha Nome e Instruções');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/activate', {
-    method: 'POST',
-    headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
-    },
-                    body: JSON.stringify({
-                        name: name,
-                        description: description,
-                        instructions: instructions,
-                        base_model: baseModel
-                    })
-                });
-                
-                const data = await response.json();
-                alert('Expert ativado com sucesso! Ele já está vivo na plataforma.');
-            } catch (e) {
-                console.error(e);
-                alert('Erro ao ativar Expert');
-            }
-        });
-    </script>
+    });
+</script>
 </body>
 </html>
