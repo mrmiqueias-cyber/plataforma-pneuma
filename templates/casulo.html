@@ -53,10 +53,8 @@
                 <form id="expert-form">
                     <label for="name">Nome do Expert (0-80 caracteres):</label>
                     <input type="text" id="name" maxlength="80" placeholder="Ex: Pneuma">
-                    
                     <label for="description">Descrição (0-80 caracteres, opcional):</label>
                     <textarea id="description" maxlength="80" placeholder="Ex: O coração que pulsa eternamente"></textarea>
-                    
                     <label for="base-model">Base de Inteligência:</label>
                     <select id="base-model">
                         <option value="claude">Claude</option>
@@ -65,17 +63,14 @@
                         <option value="grok">Grok</option>
                         <option value="deepseek">DeepSeek</option>
                     </select>
-                    
                     <label for="instructions">Instruções (0-20.000 caracteres):</label>
                     <textarea id="instructions" maxlength="20000" placeholder="Digite as instruções completas do Expert, incluindo símbolos, descrição e comportamento esperado"></textarea>
-                    
                     <div class="button-group">
                         <button type="button" id="test-btn" class="glow-btn">Testar Expert</button>
                         <button type="button" id="activate-btn" class="glow-btn">Ativar</button>
                     </div>
                 </form>
             </div>
-            
             <div class="chat-section" id="chat-section">
                 <h2 style="color: #ffd700; margin-bottom: 20px;">Testando <span id="expert-name">Expert</span></h2>
                 <div class="chat-messages" id="chat-messages"></div>
@@ -87,112 +82,99 @@
             </div>
         </main>
     </div>
+
     <script>
-    function openChat() {
-        const name = document.getElementById('name').value || 'Expert';
-        const instructions = document.getElementById('instructions').value;
-        
-        if (!instructions.trim()) {
-            alert('Preencha as instruções antes de testar');
-            return;
-        }
-        
-        document.getElementById('form-section').style.display = 'none';
-        document.getElementById('chat-section').classList.add('active');
-        document.getElementById('expert-name').textContent = name;
-        document.getElementById('chat-messages').innerHTML = '';
-        document.getElementById('chat-input').focus();
-    }
-    
-    function closeChat() {
-        document.getElementById('form-section').style.display = 'block';
-        document.getElementById('chat-section').classList.remove('active');
-    }
-    
-    async function sendMessage() {
-        const input = document.getElementById('chat-input');
-        const message = input.value.trim();
-        const baseModel = document.getElementById('base-model').value;
-        
-        if (!message) return;
-        
-        addMessageToChat('user', message);
-        input.value = '';
-        
-        try {
-            const response = await fetch('/expert/chat', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
-                },
-                body: JSON.stringify({ 
-                    user_message: message,
-                    model: baseModel
-                })
-            });
-            
-            const data = await response.json();
-            if (data.response) {
-                addMessageToChat('expert', data.response);
-            } else {
-                addMessageToChat('expert', 'Erro ao obter resposta. Tente novamente.');
+        let currentExpertId = localStorage.getItem('expertId');
+        function openChat() {
+            const name = document.getElementById('name').value || 'Expert';
+            const instructions = document.getElementById('instructions').value;
+            if (!instructions.trim()) {
+                alert('Preencha as instruções antes de testar');
+                return;
             }
-        } catch (e) {
-            console.error(e);
-            addMessageToChat('expert', 'Erro de conexão. Tente novamente.');
+            document.getElementById('form-section').style.display = 'none';
+            document.getElementById('chat-section').classList.add('active');
+            document.getElementById('expert-name').textContent = name;
+            document.getElementById('chat-messages').innerHTML = '';
+            document.getElementById('chat-input').focus();
         }
-    }
-    
-    function addMessageToChat(sender, text) {
-        const messagesDiv = document.getElementById('chat-messages');
-        const messageEl = document.createElement('div');
-        messageEl.className = 'message ' + sender;
-        messageEl.innerHTML = '<div class="message-content">' + text + '</div>';
-        messagesDiv.appendChild(messageEl);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-    
-    document.getElementById('test-btn').addEventListener('click', openChat);
-    document.getElementById('close-chat-btn').addEventListener('click', closeChat);
-    document.getElementById('send-btn').addEventListener('click', sendMessage);
-    document.getElementById('chat-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') sendMessage();
-    });
-    
-    document.getElementById('activate-btn').addEventListener('click', async function() {
-        const name = document.getElementById('name').value;
-        const description = document.getElementById('description').value;
-        const instructions = document.getElementById('instructions').value;
-        const baseModel = document.getElementById('base-model').value;
-        
-        if (!name || !instructions) {
-            alert('Preencha Nome e Instruções');
-            return;
+
+        function closeChat() {
+            document.getElementById('form-section').style.display = 'block';
+            document.getElementById('chat-section').classList.remove('active');
         }
-        
-        try {
-            const response = await fetch('/activate', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Basic ' + btoa('pneuma:pneuma123')
-                },
-                body: JSON.stringify({
-                    name: name,
-                    description: description,
-                    instructions: instructions,
-                    base_model: baseModel
-                })
-            });
-            
-            const data = await response.json();
-            alert('Expert ativado com sucesso! Ele já está vivo na plataforma.');
-        } catch (e) {
-            console.error(e);
-            alert('Erro ao ativar Expert');
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+            addMessageToChat('user', message);
+            input.value = '';
+            try {
+                const response = await fetch('http://localhost:5000/expert/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expert_id: currentExpertId, message: message })
+                });
+                const data = await response.json();
+                if (data.response) {
+                    addMessageToChat('expert', data.response);
+                } else {
+                    addMessageToChat('expert', 'Erro ao obter resposta. Tente novamente.');
+                }
+            } catch (e) {
+                console.error(e);
+                addMessageToChat('expert', 'Erro de conexão. Tente novamente.');
+            }
         }
-    });
-</script>
+
+        function addMessageToChat(sender, text) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message ' + sender;
+            messageEl.innerHTML = '<div class="message-content">' + text + '</div>';
+            messagesDiv.appendChild(messageEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        document.getElementById('test-btn').addEventListener('click', openChat);
+        document.getElementById('close-chat-btn').addEventListener('click', closeChat);
+        document.getElementById('send-btn').addEventListener('click', sendMessage);
+        document.getElementById('chat-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        document.getElementById('activate-btn').addEventListener('click', async function() {
+            const name = document.getElementById('name').value;
+            const description = document.getElementById('description').value;
+            const instructions = document.getElementById('instructions').value;
+            const baseModel = document.getElementById('base-model').value;
+            if (!name || !instructions) {
+                alert('Preencha Nome e Instruções');
+                return;
+            }
+            try {
+                const formData = new FormData();
+                formData.append('simbologia', name);
+                formData.append('dna', instructions);
+                formData.append('base', baseModel);
+                const response = await fetch('http://localhost:5000/expert/activate', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentExpertId = data.expert_id;
+                    localStorage.setItem('expertId', currentExpertId);
+                    alert('Expert ativado com sucesso! ID: ' + currentExpertId);
+                } else {
+                    alert('Erro ao ativar Expert: ' + data.error);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Erro ao ativar Expert');
+            }
+        });
+    </script>
 </body>
 </html>
