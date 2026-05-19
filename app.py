@@ -149,88 +149,7 @@ def plataforma():
 def casulo():
     return render_template('casulo.html')
 
-@app.route('/expert/chat', methods=['POST'])
-@requires_auth
-def expert_chat():
-    data = request.get_json()
-    user_message = data.get('user_message', '')
-    model = data.get('model', 'claude')
-    
-    # Busca Expert no banco (se existir)
-    conn = sqlite3.connect('casulo.db')
-    c = conn.cursor()
-    c.execute("SELECT name, description, instructions FROM experts ORDER BY id DESC LIMIT 1")
-    expert = c.fetchone()
-    conn.close()
-    
-    # Se houver Expert, integra ao system prompt
-    if expert:
-        name, description, instructions = expert
-        system_prompt = f"Você é {name}. {description}. {instructions}"
-    else:
-        system_prompt = "Você é um assistente inteligente e prestativo."
-    
-    # Roteia para a IA correta
-    if model == 'claude':
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if not api_key:
-            return jsonify({"response": "Erro: ANTHROPIC_API_KEY não configurada"})
-        
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            message = client.messages.create(
-                model="claude-3-5-sonnet",
-                max_tokens=2048,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_message}]
-            )
-            return jsonify({"response": message.content[0].text})
-        except Exception as e:
-            return jsonify({"response": f"Erro Claude: {str(e)}"})
-    
-    elif model == 'grok':
-        api_key = os.getenv('XAI_API_KEY')
-        if not api_key:
-            return jsonify({"response": "Erro: XAI_API_KEY não configurada"})
-        
-        try:
-            from openai import OpenAI
-            client = OpenAI(base_url="https://api.x.ai/v1", api_key=api_key)
-            response = client.chat.completions.create(
-                model="grok-beta",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                max_tokens=2048
-            )
-            return jsonify({"response": response.choices[0].message.content})
-        except Exception as e:
-            return jsonify({"response": f"Erro Grok: {str(e)}"})
-    
-    elif model == 'deepseek':
-        return jsonify({"response": call_deepseek(system_prompt, user_message)})
-    
-    elif model == 'gemini':
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            return jsonify({"response": "Erro: GEMINI_API_KEY não configurada"})
-        
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model_obj = genai.GenerativeModel(
-                model_name="gemini-1.5-flash",
-                system_instruction=system_prompt
-            )
-            response = model_obj.generate_content(user_message)
-            return jsonify({"response": response.text})
-        except Exception as e:
-            return jsonify({"response": f"Erro Gemini: {str(e)}"})
-    
-    else:
-        return jsonify({"response": "Modelo não reconhecido"})
+
 
 # Rotas PIX
 @app.route('/pix/qrcode')
@@ -551,6 +470,73 @@ def llama_chat():
         return Response(generate(), mimetype='text/event-stream')
     except Exception as e:
         return Response(f"data: Error: {str(e)}\n\n", mimetype='text/event-stream')
+# ===== ROTAS DO CASULO (Ativação e Chat de Experts) =====
+
+@app.route('/expert/activate', methods=['POST'])
+def expert_activate():
+    """Ativa um Expert e salva no banco de dados"""
+    try:
+        simbologia = request.form.get('simbologia', '')
+        dna = request.form.get('dna', '')
+        base_model = request.form.get('base', 'deepseek')
+        
+        # Processa PDFs se houver
+        pdfs_text = ''
+        if 'pdfs' in request.files:
+            for file in request.files.getlist('pdfs'):
+                if file and file.filename.endswith('.pdf'):
+                    pdfs_text += f"[PDF: {file.filename}] "
+        
+        # Salva no banco de dados
+        conn = sqlite3.connect('casulo.db')
+        c = conn.cursor()
+        created_at = datetime.now().isoformat()
+        
+        c.execute("""
+            INSERT INTO experts (name, description, instructions, base_model, pdfs, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, ('Expert', simbologia, dna, base_model, pdfs_text, created_at))
+        
+        conn.commit()
+        expert_id = c.lastrowid
+        conn.close()
+        
+        return jsonify({"success": True, "expert_id": expert_id})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route('/expert/chat', methods=['POST'])
+def expert_chat_new():
+    """Chat com um Expert ativado"""
+    try:
+        data = request.get_json()
+        expert_id = data.get('expert_id')
+        user_message = data.get('message', '')
+        
+        # Busca o Expert no banco
+        conn = sqlite3.connect('casulo.db')
+        c = conn.cursor()
+        c.execute("SELECT name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id,))
+        expert = c.fetchone()
+        conn.close()
+        
+        if not expert:
+            return jsonify({"response": "Expert não encontrado"}), 404
+        
+        name, description, instructions, base_model = expert
+        
+        # Monta o system prompt com o DNA do Expert
+        system_prompt = f"Você é {name}. {description}\n\n{instructions}"
+        
+        # Roteia para a IA correta
+        response = route_to_model(base_model, system_prompt, user_message)
+        
+        return jsonify({"response": response})
+    
+    except Exception as e:
+        return jsonify({"response": f"Erro: {str(e)}"}), 400
 
 
 if __name__ == '__main__':
