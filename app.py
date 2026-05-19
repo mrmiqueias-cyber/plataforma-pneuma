@@ -145,7 +145,6 @@ def plataforma():
 
 # Rota Administrativa (Casulo)
 @app.route('/casulo')
-@requires_auth
 def casulo():
     return render_template('casulo.html')
 
