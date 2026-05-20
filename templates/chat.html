@@ -389,12 +389,13 @@
             
             try {
                 const response = await fetch('/expert/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-    expert_id: localStorage.getItem('expertId'),
-    message: content
-})
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        expert_id: localStorage.getItem('expertId'),
+        message: content
+    }),
+    targetAddressSpace: 'local'
 });
                 
                 if (!response.ok) {
