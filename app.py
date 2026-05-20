@@ -537,6 +537,21 @@ def expert_chat_new():
     except Exception as e:
         return jsonify({"response": f"Erro: {str(e)}"}), 400
 
+@app.route('/delete_old_experts', methods=['DELETE'])
+def delete_old_experts():
+    threshold = request.args.get('min_id', type=int)
+    if threshold is None:
+        return jsonify({'error': 'Missing required parameter: min_id'}), 400
+    try:
+        conn = sqlite3.connect('casulo.db')
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM experts WHERE id < ?', (threshold,))
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'deleted_count': deleted_count}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
