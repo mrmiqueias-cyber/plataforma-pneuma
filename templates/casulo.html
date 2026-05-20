@@ -111,12 +111,12 @@
             addMessageToChat('user', message);
             input.value = '';
             try {
-                const response = await fetch('http://localhost:5000/expert/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ expert_id: currentExpertId, message: message }),
-targetAddressSpace: 'local'
-                });
+                const response = await fetch('/expert/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ expert_id: currentExpertId, message: message })
+});
                 const data = await response.json();
                 if (data.response) {
                     addMessageToChat('expert', data.response);
@@ -159,9 +159,11 @@ targetAddressSpace: 'local'
                 formData.append('simbologia', name);
                 formData.append('dna', instructions);
                 formData.append('base', baseModel);
-                const response = await fetch('http://localhost:5000/expert/activate', {
-                    method: 'POST',
-                    body: formData
+                const response = await fetch('/expert/activate', {
+  method: 'POST',
+  credentials: 'include',
+  body: formData
+
                 });
                 const data = await response.json();
                 if (data.success) {
