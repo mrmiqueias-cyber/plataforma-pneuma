@@ -388,11 +388,14 @@
             sendBtn.disabled = true;
             
             try {
-                const response = await fetch('/pneuma/chat', {
+                const response = await fetch('/expert/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_message: content })
-                });
+                    body: JSON.stringify({
+    expert_id: localStorage.getItem('expertId'),
+    message: content
+})
+});
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);

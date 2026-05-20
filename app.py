@@ -312,7 +312,7 @@ def route_to_model(model, system_prompt, user_message):
             import anthropic
             client = anthropic.Anthropic(api_key=api_key)
             message = client.messages.create(
-                model="claude-3-5-sonnet",
+                model=os.getenv('CLAUDE_MODEL', 'claude-3-5-sonnet'),
                 max_tokens=2048,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}]
@@ -330,7 +330,7 @@ def route_to_model(model, system_prompt, user_message):
             from openai import OpenAI
             client = OpenAI(base_url="https://api.x.ai/v1", api_key=api_key)
             response = client.chat.completions.create(
-                model="grok-beta",
+                model=os.getenv('GROK_MODEL', 'grok-beta'),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
@@ -353,7 +353,7 @@ def route_to_model(model, system_prompt, user_message):
             import google.generativeai as genai
             genai.configure(api_key=api_key)
             model_obj = genai.GenerativeModel(
-                model_name="gemini-1.5-flash",
+                model_name=os.getenv('GEMINI_MODEL', 'gemini-1.5-flash'),
                 system_instruction=system_prompt
             )
             response = model_obj.generate_content(user_message)
@@ -397,7 +397,7 @@ def grok_chat():
         
         def generate():
             stream = client.chat.completions.create(
-                model="grok-beta",
+                model=os.getenv('GROK_MODEL', 'grok-beta'),
                 messages=messages,
                 stream=True
             )
@@ -425,7 +425,7 @@ def claude_chat():
         
         def generate():
             with client.messages.stream(
-                model="claude-3-5-sonnet",
+                model=os.getenv('CLAUDE_MODEL', 'claude-3-5-sonnet'),
                 max_tokens=4096,
                 messages=[{"role": m["role"], "content": m["content"]} for m in messages],
                 stream=True
