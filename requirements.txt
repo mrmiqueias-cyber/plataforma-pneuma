@@ -6,3 +6,5 @@ qrcode
 pillow
 anthropic
 gunicorn
+openai
+google-generativeai
