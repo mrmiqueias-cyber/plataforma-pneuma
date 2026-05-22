@@ -298,7 +298,7 @@ def pneuma_chat():
         system_prompt = PNEUMA_SYSTEM_PROMPT
     
     # Chama DeepSeek com o system prompt
-    response = call_deepseek(system_prompt, user_message)
+    response = route_to_model(system_prompt, user_message, 'deepseek')
     return jsonify({"response": response})
 
 
@@ -306,7 +306,7 @@ import os
 import requests
 from typing import Optional
 
-def route_to_model(model_short: str, system_prompt: str, user_message: str) -> str:
+def route_to_model(system_prompt: str, user_message: str, model_short: str) -> str:
     """Envia uma requisição para a OpenRouter e retorna a resposta do modelo."""
     api_key = os.getenv('OPENROUTER_API_KEY')
     if not api_key:
@@ -509,7 +509,7 @@ def expert_chat_new():
         system_prompt = f"Você é {name}. {description}\n\n{instructions}"
         
         # Roteia para a IA correta
-        response = route_to_model(base_model, system_prompt, user_message)
+        response = route_to_model(system_prompt, user_message, base_model)
         
         return jsonify({"response": response})
     
