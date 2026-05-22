@@ -297,6 +297,12 @@ def pneuma_chat():
     else:
         system_prompt = PNEUMA_SYSTEM_PROMPT
     
+    # Chama route_to_model com a ordem CORRETA
+    response = route_to_model(system_prompt, user_message, 'deepseek')
+    
+    return jsonify({"response": response})
+        system_prompt = PNEUMA_SYSTEM_PROMPT
+    
     # Chama DeepSeek com o system prompt
     response = route_to_model(system_prompt, user_message, 'deepseek')
     return jsonify({"response": response})
