@@ -312,7 +312,7 @@ def route_to_model(model: str, system_prompt: str, user_message: str) -> Optiona
     }
     openrouter_model = model_mapping.get(model.lower())
     if not openrouter_model:
-        return f'Erro: Modelo \'{model}\' não suportado. Modelos disponíveis: {\', \'.join(model_mapping.keys())}'
+        return f"Erro: Modelo '{model}' não suportado. Modelos disponíveis: {', '.join(model_mapping.keys())}"
     
     api_key = os.getenv('OPENROUTER_API_KEY')
     if not api_key:
