@@ -302,22 +302,29 @@ def pneuma_chat():
     return jsonify({"response": response})
 
 
-def route_to_model(model: str, system_prompt: str, user_message: str) -> Optional[str]:
-    model_mapping = {
+import os
+import requests
+from typing import Optional
+
+def route_to_model(model_short: str, system_prompt: str, user_message: str) -> str:
+    """Envia uma requisição para a OpenRouter e retorna a resposta do modelo."""
+    api_key = os.getenv('OPENROUTER_API_KEY')
+    if not api_key:
+        return "Erro: Variável de ambiente OPENROUTER_API_KEY não definida."
+
+    # Mapeamento de nomes curtos para modelos OpenRouter
+    model_map = {
         'claude': 'claude-3-5-sonnet',
         'grok': 'grok-2-latest',
         'deepseek': 'deepseek-chat',
         'gemini': 'gemini-2.0-flash',
         'llama': 'llama-3.1-70b'
     }
-    openrouter_model = model_mapping.get(model.lower())
+
+    openrouter_model = model_map.get(model_short.lower())
     if not openrouter_model:
-        return f"Erro: Modelo '{model}' não suportado. Modelos disponíveis: {', '.join(model_mapping.keys())}"
-    
-    api_key = os.getenv('OPENROUTER_API_KEY')
-    if not api_key:
-        return 'Erro: OPENROUTER_API_KEY não configurada no .env'
-    
+        return f"Erro: Modelo '{model_short}' não reconhecido. Use um dos: {', '.join(model_map.keys())}"
+
     url = 'https://openrouter.ai/api/v1/chat/completions'
     headers = {
         'Authorization': f'Bearer {api_key}',
@@ -328,18 +335,32 @@ def route_to_model(model: str, system_prompt: str, user_message: str) -> Optiona
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_message}
-        ]
+        ],
+        'max_tokens': 2048
     }
-    
+
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        if response.status_code == 401:
+            return "Erro: Chave de API inválida (401)."
+        elif response.status_code == 400:
+            return "Erro: Payload da requisição inválido (400)."
+        elif response.status_code >= 500:
+            return f"Erro: Servidor OpenRouter retornou erro {response.status_code}."
+        elif response.status_code != 200:
+            return f"Erro inesperado: status {response.status_code}."
+
         data = response.json()
-        return data['choices'][0]['message']['content']
+        if 'choices' in data and len(data['choices']) > 0:
+            return data['choices'][0]['message']['content']
+        else:
+            return "Erro: Resposta vazia da API."
+
+    except requests.exceptions.Timeout:
+        return "Erro: Tempo limite excedido na requisição."
     except requests.exceptions.RequestException as e:
-        return f'Erro na requisição: {str(e)}'
-    except (KeyError, IndexError, ValueError) as e:
-        return f'Erro ao processar resposta: {str(e)}'
+        return f"Erro de requisição: {str(e)}"
+
 # Rotas de Chat com IAs
 @app.route('/grok/chat', methods=['POST'])
 def grok_chat():
