@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, Response, send_file, jsonify
 from functools import wraps
-from flask_cors import CORS  
+from flask_cors import CORS
+from typing import Optional  
 import os
 import qrcode
 from io import BytesIO
@@ -299,89 +300,46 @@ def pneuma_chat():
     # Chama DeepSeek com o system prompt
     response = call_deepseek(system_prompt, user_message)
     return jsonify({"response": response})
-# ===== FUNÇÃO DE ROTEAMENTO =====
-def route_to_model(model, system_prompt, user_message):
-    """Roteia para a IA correta baseado no modelo selecionado"""
+
+
+def route_to_model(model: str, system_prompt: str, user_message: str) -> Optional[str]:
+    model_mapping = {
+        'claude': 'claude-3-5-sonnet',
+        'grok': 'grok-2-latest',
+        'deepseek': 'deepseek-chat',
+        'gemini': 'gemini-2.0-flash',
+        'llama': 'llama-3.1-70b'
+    }
+    openrouter_model = model_mapping.get(model.lower())
+    if not openrouter_model:
+        return f'Erro: Modelo \'{model}\' não suportado. Modelos disponíveis: {\', \'.join(model_mapping.keys())}'
     
-    if model == 'claude':
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if not api_key:
-            return "Erro: ANTHROPIC_API_KEY não configurada"
-        
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            message = client.messages.create(
-                model=os.getenv('CLAUDE_MODEL', 'claude-3-5-sonnet'),
-                max_tokens=2048,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_message}]
-            )
-            return message.content[0].text
-        except Exception as e:
-            return f"Erro Claude: {str(e)}"
+    api_key = os.getenv('OPENROUTER_API_KEY')
+    if not api_key:
+        return 'Erro: OPENROUTER_API_KEY não configurada no .env'
     
-    elif model == 'grok':
-        api_key = os.getenv('XAI_API_KEY')
-        if not api_key:
-            return "Erro: XAI_API_KEY não configurada"
-        
-        try:
-            from openai import OpenAI
-            client = OpenAI(base_url="https://api.x.ai/v1", api_key=api_key)
-            response = client.chat.completions.create(
-                model=os.getenv('GROK_MODEL', 'grok-beta'),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                max_tokens=2048
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"Erro Grok: {str(e)}"
+    url = 'https://openrouter.ai/api/v1/chat/completions'
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'model': openrouter_model,
+        'messages': [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_message}
+        ]
+    }
     
-    elif model == 'deepseek':
-        return call_deepseek(system_prompt, user_message)
-    
-    elif model == 'gemini':
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            return "Erro: GEMINI_API_KEY não configurada"
-        
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model_obj = genai.GenerativeModel(
-                model_name=os.getenv('GEMINI_MODEL', 'gemini-1.5-flash'),
-                system_instruction=system_prompt
-            )
-            response = model_obj.generate_content(user_message)
-            return response.text
-        except Exception as e:
-            return f"Erro Gemini: {str(e)}"
-    
-    elif model == 'llama':
-        ollama_url = os.getenv('OLLAMA_URL', 'http://localhost:11434')
-        try:
-            response = requests.post(
-                f"{ollama_url}/api/generate",
-                json={
-                    "model": "llama3.1",
-                    "prompt": f"{system_prompt}\n\n{user_message}",
-                    "stream": False
-                },
-                timeout=30
-            )
-            if response.status_code == 200:
-                return response.json().get('response', 'Sem resposta')
-            else:
-                return f"Erro Llama: {response.status_code}"
-        except Exception as e:
-            return f"Erro Llama: {str(e)}"
-    
-    else:
-        return "Modelo não reconhecido"
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        return data['choices'][0]['message']['content']
+    except requests.exceptions.RequestException as e:
+        return f'Erro na requisição: {str(e)}'
+    except (KeyError, IndexError, ValueError) as e:
+        return f'Erro ao processar resposta: {str(e)}'
 # Rotas de Chat com IAs
 @app.route('/grok/chat', methods=['POST'])
 def grok_chat():
