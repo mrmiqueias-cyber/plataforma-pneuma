@@ -428,6 +428,18 @@ def expert_chat_new():
             return jsonify({"response": "Expert não encontrado"}), 404
         
         name, description, instructions, base_model = expert
+        base_model = base_model or 'deepseek'
+        
+        # Monta o system prompt com o DNA do Expert
+        system_prompt = f"Você é {name}. {description}\n\n{instructions}"
+        
+        # Roteia para a IA correta
+        response = route_to_model(system_prompt, user_message, base_model)
+        return jsonify({"response": response})
+    except Exception as e:
+        return jsonify({"response": f"Erro: {str(e)}"}), 400
+        
+        name, description, instructions, base_model = expert
 base_model = base_model or 'deepseek'
         
         # Monta o system prompt com o DNA do Expert
