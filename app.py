@@ -235,12 +235,13 @@ import os
 
 def route_to_model(system_prompt, user_message, model_short):
     model_map = {
-        "claude": "anthropic/claude-3-sonnet",
-        "grok": "x-ai/grok-beta",
-        "deepseek": "deepseek/deepseek-chat",
-        "gemini": "google/gemini-pro",
-        "llama": "meta-llama/llama-3-8b-instruct"
-    }
+    "claude": "anthropic/claude-opus-4.7",
+    "grok": "x-ai/grok-4.3",
+    "deepseek": "deepseek/deepseek-v4-flash",
+    "gemini": "google/gemini-3.5-flash",
+    "llama": "meta-llama/llama-3.1-70b-instruct",
+    "gpt": "openai/gpt-5.5"
+}
     model = model_map.get(model_short)
     if not model:
         return f"Modelo '{model_short}' não encontrado. Modelos disponíveis: {list(model_map.keys())}"
