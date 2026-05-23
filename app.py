@@ -374,7 +374,29 @@ def llama_chat():
         return Response(f"data: Error: {str(e)}\n\n", mimetype='text/event-stream')
 # ===== ROTAS DO CASULO (Ativação e Chat de Experts) =====
 
+@app.route('/expert/activate', methods=['POST'])
+def activate_expert():
+    name = request.form.get('name')
+    description = request.form.get('description')
+    instructions = request.form.get('instructions')
+    base = request.form.get('base', 'deepseek')
 
+    if not all([name, description, instructions]):
+        return jsonify({'error': 'Campos obrigatórios: name, description, instructions'}), 400
+
+    try:
+        conn = sqlite3.connect('casulo.db')
+        cursor = conn.cursor()
+        created_at = datetime.now().isoformat()
+        cursor.execute('''INSERT INTO experts (name, description, instructions, base_model, created_at) VALUES (?, ?, ?, ?, ?)''', (name, description, instructions, base, created_at))
+        conn.commit()
+        expert_id = cursor.lastrowid
+        conn.close()
+        return jsonify({'success': True, 'expert_id': expert_id, 'message': 'Expert ativado com sucesso.'}), 200
+    except sqlite3.IntegrityError as e:
+        return jsonify({'error': f'Erro de integridade: {str(e)}'}), 409
+    except Exception as e:
+        return jsonify({'error': f'Erro interno: {str(e)}'}), 400
 
 @app.route('/expert/chat', methods=['POST'])
 def expert_chat_new():
