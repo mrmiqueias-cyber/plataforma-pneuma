@@ -380,7 +380,7 @@ def expert_activate():
     try:
         simbologia = request.form.get('simbologia', '')
         dna = request.form.get('dna', '')
-       base_model = request.form.get('base', 'deepseek') or 'deepseek'
+        base_model = request.form.get('base', 'deepseek') or 'deepseek'
         
         # Processa PDFs se houver
         pdfs_text = ''
