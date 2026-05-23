@@ -237,13 +237,13 @@ def route_to_model(system_prompt: str, user_message: str, model_short: str) -> s
         return "Erro: Variável de ambiente OPENROUTER_API_KEY não definida."
 
     # Mapeamento de nomes curtos para modelos OpenRouter
-    model_map = {
-        'claude': 'claude-3-5-sonnet',
-        'grok': 'grok-2-latest',
-        'deepseek': 'deepseek-chat',
-        'gemini': 'gemini-2.0-flash',
-        'llama': 'llama-3.1-70b'
-    }
+   model_map = {
+    'claude': 'anthropic/claude-3-5-sonnet',
+    'grok': 'x-ai/grok-2-latest',
+    'deepseek': 'deepseek/deepseek-chat',
+    'gemini': 'google/gemini-2.0-flash',
+    'llama': 'meta-llama/llama-3.1-70b'
+}
 
     openrouter_model = model_map.get(model_short.lower())
     if not openrouter_model:
