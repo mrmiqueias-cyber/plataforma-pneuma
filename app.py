@@ -230,60 +230,55 @@ def pneuma_chat():
 import requests
 from typing import Optional
 
-def route_to_model(system_prompt: str, user_message: str, model_short: str) -> str:
-    """Envia uma requisição para a OpenRouter e retorna a resposta do modelo."""
-    api_key = os.getenv('OPENROUTER_API_KEY')
-    if not api_key:
-        return "Erro: Variável de ambiente OPENROUTER_API_KEY não definida."
+import requests
+import os
 
-    # Mapeamento de nomes curtos para modelos OpenRouter
-   model_map = {
-    'claude': 'anthropic/claude-3-5-sonnet',
-    'grok': 'x-ai/grok-2-latest',
-    'deepseek': 'deepseek/deepseek-chat',
-    'gemini': 'google/gemini-2.0-flash',
-    'llama': 'meta-llama/llama-3.1-70b'
-}
+def route_to_model(system_prompt, user_message, model_short):
+    model_map = {
+        "claude": "anthropic/claude-3-sonnet",
+        "grok": "x-ai/grok-beta",
+        "deepseek": "deepseek/deepseek-chat",
+        "gemini": "google/gemini-pro",
+        "llama": "meta-llama/llama-3-8b-instruct"
+    }
+    model = model_map.get(model_short)
+    if not model:
+        return f"Modelo '{model_short}' não encontrado. Modelos disponíveis: {list(model_map.keys())}"
 
-    openrouter_model = model_map.get(model_short.lower())
-    if not openrouter_model:
-        return f"Erro: Modelo '{model_short}' não reconhecido. Use um dos: {', '.join(model_map.keys())}"
-
-    url = 'https://openrouter.ai/api/v1/chat/completions'
+    url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
-        'Authorization': f'Bearer {api_key}',
-        'Content-Type': 'application/json'
+        "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY', '')}",
+        "Content-Type": "application/json"
     }
     payload = {
-        'model': openrouter_model,
-        'messages': [
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': user_message}
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
         ],
-        'max_tokens': 2048
+        "max_tokens": 2048
     }
 
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=30)
-        if response.status_code == 401:
-            return "Erro: Chave de API inválida (401)."
-        elif response.status_code == 400:
-            return "Erro: Payload da requisição inválido (400)."
-        elif response.status_code >= 500:
-            return f"Erro: Servidor OpenRouter retornou erro {response.status_code}."
-        elif response.status_code != 200:
-            return f"Erro inesperado: status {response.status_code}."
-
-        data = response.json()
-        if 'choices' in data and len(data['choices']) > 0:
-            return data['choices'][0]['message']['content']
+        status = response.status_code
+        if status == 200:
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        elif status == 401:
+            return "Erro: Chave de API inválida (401). Verifique a variável OPENROUTER_API_KEY."
+        elif status == 400:
+            return f"Erro: Payload inválido (400). Detalhes: {response.text}"
+        elif status >= 500:
+            return f"Erro: Servidor OpenRouter com problema ({status}). Tente novamente mais tarde."
         else:
-            return "Erro: Resposta vazia da API."
-
+            return f"Erro inesperado: status {status} - {response.text}"
     except requests.exceptions.Timeout:
-        return "Erro: Tempo limite excedido na requisição."
-    except requests.exceptions.RequestException as e:
-        return f"Erro de requisição: {str(e)}"
+        return "Erro: Tempo limite excedido. O servidor não respondeu a tempo."
+    except requests.exceptions.ConnectionError:
+        return "Erro: Falha na conexão. Verifique sua internet ou a URL."
+    except Exception as e:
+        return f"Erro inesperado: {str(e)}"
 
 # Rotas de Chat com IAs
 @app.route('/grok/chat', methods=['POST'])
