@@ -156,9 +156,10 @@
             }
             try {
                 const formData = new FormData();
-                formData.append('simbologia', name);
-                formData.append('dna', instructions);
-                formData.append('base', baseModel);
+                formData.append('name', name);
+formData.append('description', description);
+formData.append('instructions', instructions);
+formData.append('base', baseModel);
                 const response = await fetch('/expert/activate', {
   method: 'POST',
   credentials: 'include',
