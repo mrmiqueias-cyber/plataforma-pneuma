@@ -374,31 +374,6 @@ def llama_chat():
         return Response(f"data: Error: {str(e)}\n\n", mimetype='text/event-stream')
 # ===== ROTAS DO CASULO (Ativação e Chat de Experts) =====
 
-@app.route('/expert/chat', methods=['POST'])
-def expert_chat_new():
-    """Chat com um Expert ativado"""
-    try:
-        data = request.get_json()
-        expert_id = data.get('expert_id')
-        user_message = data.get('message', '')
-        
-        conn = sqlite3.connect('casulo.db')
-        c = conn.cursor()
-        c.execute("SELECT name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id,))
-        expert = c.fetchone()
-        conn.close()
-        
-        if not expert:
-            return jsonify({"response": "Expert não encontrado"}), 404
-        
-        name, description, instructions, base_model = expert
-        base_model = base_model or 'deepseek'
-        
-        system_prompt = f"Você é {name}. {description}\n\n{instructions}"
-        response = route_to_model(system_prompt, user_message, base_model)
-        return jsonify({"response": response})
-    except Exception as e:
-        return jsonify({"response": f"Erro: {str(e)}"}), 400
 
 
 @app.route('/expert/chat', methods=['POST'])
@@ -431,19 +406,6 @@ def expert_chat_new():
     except Exception as e:
         return jsonify({"response": f"Erro: {str(e)}"}), 400
         
-        name, description, instructions, base_model = expert
-base_model = base_model or 'deepseek'
-        
-        # Monta o system prompt com o DNA do Expert
-        system_prompt = f"Você é {name}. {description}\n\n{instructions}"
-        
-        # Roteia para a IA correta
-        response = route_to_model(system_prompt, user_message, base_model)
-        
-        return jsonify({"response": response})
-    
-    except Exception as e:
-        return jsonify({"response": f"Erro: {str(e)}"}), 400
 
 @app.route('/delete_old_experts', methods=['DELETE'])
 def delete_old_experts():
