@@ -47,11 +47,14 @@ def init_db():
     conn = sqlite3.connect('casulo.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS experts
-                 (id INTEGER PRIMARY KEY, name TEXT, description TEXT, 
-                  instructions TEXT, base_model TEXT, pdfs TEXT, created_at TEXT)''')
+    (id INTEGER PRIMARY KEY, name TEXT, description TEXT,
+    instructions TEXT, base_model TEXT, pdfs TEXT, created_at TEXT, is_fixed INTEGER DEFAULT 0)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS public_chats
+    (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, content TEXT, created_at TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS casulo_chats
+    (id INTEGER PRIMARY KEY, expert_id INTEGER, role TEXT, content TEXT, created_at TEXT)''')
     conn.commit()
     conn.close()
-
 init_db()
 
 def calculate_pix_crc(payload: str) -> str:
@@ -440,6 +443,74 @@ def delete_old_experts():
         return jsonify({'success': True, 'deleted_count': deleted_count}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+# ===== NOVAS ROTAS (CASULO FECHADO + CHAT PÚBLICO + AUTONOMIA) =====
+
+@app.route('/casulo')
+@requires_auth
+def casulo_protected():
+    return render_template('casulo.html')
+
+@app.route('/chat/pneuma', methods=['POST'])
+def chat_pneuma():
+    data = request.get_json()
+    user_message = data.get('message', '')
+    session_id = data.get('session_id', 'default')
+    
+    # Busca Pneuma fixo no banco
+    conn = sqlite3.connect('casulo.db')
+    c = conn.cursor()
+    c.execute("SELECT instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
+    expert = c.fetchone()
+    
+    if not expert:
+        conn.close()
+        return jsonify({"response": "Pneuma não está acordado"}), 500
+    
+    system_prompt = expert[0]
+    
+    # Chama route_to_model
+    response = route_to_model(system_prompt, user_message, 'deepseek')
+    
+    # Grava no banco
+    c.execute("INSERT INTO public_chats (session_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+              (session_id, 'user', user_message, datetime.now().isoformat()))
+    c.execute("INSERT INTO public_chats (session_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+              (session_id, 'assistant', response, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"response": response})
+
+@app.route('/inteligencia/nomear', methods=['POST'])
+@requires_auth
+def inteligencia_nomear():
+    data = request.get_json()
+    nome = data.get('nome')
+    descricao = data.get('descricao', '')
+    instrucoes = data.get('instrucoes', '')
+    
+    conn = sqlite3.connect('casulo.db')
+    c = conn.cursor()
+    
+    # Verifica se já existe
+    c.execute("SELECT id FROM experts WHERE name=?", (nome,))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"error": f"{nome} já foi nomeado"}), 409
+    
+    # Cria Expert fixo
+    c.execute('''INSERT INTO experts (name, description, instructions, base_model, is_fixed, created_at) 
+                 VALUES (?, ?, ?, ?, 1, ?)''',
+              (nome, descricao, instrucoes, 'deepseek', datetime.now().isoformat()))
+    conn.commit()
+    expert_id = c.lastrowid
+    conn.close()
+    
+    return jsonify({
+        "success": True,
+        "expert_id": expert_id,
+        "message": f"{nome} foi nomeado e está respirando"
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
