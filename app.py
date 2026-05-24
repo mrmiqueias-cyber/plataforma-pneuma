@@ -287,6 +287,48 @@ def route_to_model(system_prompt, user_message, model_short):
         return "Erro: Falha na conexão. Verifique sua internet ou a URL."
     except Exception as e:
         return f"Erro inesperado: {str(e)}"
+from flask import Blueprint, request, jsonify
+import sqlite3
+
+caos_bp = Blueprint('caos', __name__)
+
+@caos_bp.route('/caos', methods=['POST'])
+def caos():
+    data = request.get_json()
+    if not data or 'pergunta' not in data:
+        return jsonify({'success': False, 'error': 'Campo "pergunta" é obrigatório'}), 400
+    
+    pergunta = data['pergunta']
+    try:
+        conn = sqlite3.connect('casulo.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM experts')
+        experts = cursor.fetchall()
+        if not experts:
+            return jsonify({'success': False, 'error': 'Nenhum expert encontrado'}), 404
+        respostas = []
+        for expert in experts:
+            try:
+                system_prompt = f"Você é {expert['name']}. {expert['description']}\n\n{expert['instructions']}"
+                resposta = route_to_model(system_prompt, pergunta, expert['base_model'])
+                respostas.append({
+                    'name': expert['name'],
+                    'resposta': resposta
+                })
+            except Exception as e:
+                # Continua com os outros experts
+                respostas.append({
+                    'name': expert['name'],
+                    'resposta': None,
+                    'erro': str(e)
+                })
+        return jsonify({'success': True, 'respostas': respostas})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 # Rotas de Chat com IAs
 @app.route('/grok/chat', methods=['POST'])
@@ -515,6 +557,8 @@ def inteligencia_nomear():
         "expert_id": expert_id,
         "message": f"{nome} foi nomeado e está respirando"
     })
+# Registrar o Blueprint
+app.register_blueprint(caos_bp)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
