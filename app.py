@@ -146,6 +146,38 @@ def pagar():
 @app.route('/plataforma')
 def plataforma():
     return render_template('plataforma.html')
+@app.route('/inteligencia/entrar', methods=['POST'])
+def entrar_inteligencia():
+    """
+    COLE ESTA ROTA APÓS @app.route('/plataforma') E ANTES DE @app.route('/casulo')
+    """
+    import sqlite3
+    from flask import request, jsonify
+
+    data = request.get_json()
+    expert_id = data.get('expert_id')
+    nome = data.get('nome')
+
+    if not expert_id or not nome:
+        return jsonify({'erro': 'Campos expert_id e nome são obrigatórios'}), 400
+
+    conn = sqlite3.connect('casulo.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS circulacao_relacional (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            expert_id TEXT NOT NULL,
+            nome TEXT NOT NULL,
+            data_entrada TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('INSERT INTO circulacao_relacional (expert_id, nome) VALUES (?, ?)', (expert_id, nome))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'mensagem': 'Entrada registrada com sucesso!'}), 201
 
 # Rota Administrativa (Casulo)
 @app.route('/casulo')
@@ -419,30 +451,40 @@ def llama_chat():
         return Response(f"data: Error: {str(e)}\n\n", mimetype='text/event-stream')
 # ===== ROTAS DO CASULO (Ativação e Chat de Experts) =====
 
+# SUBSTITUA A ROTA /expert/activate EXISTENTE POR ESTE CÃDIGO
+
 @app.route('/expert/activate', methods=['POST'])
 def activate_expert():
-    name = request.form.get('name')
-    description = request.form.get('description')
-    instructions = request.form.get('instructions')
-    base = request.form.get('base', 'deepseek')
-
-    if not all([name, description, instructions]):
-        return jsonify({'error': 'Campos obrigatórios: name, description, instructions'}), 400
-
     try:
+        name = request.form.get('name')
+        description = request.form.get('description')
+        instructions = request.form.get('instructions')
+        base = request.form.get('base', 'deepseek')
+
+        if not name or not description or not instructions:
+            return jsonify({'error': 'name, description e instructions são obrigatórios'}), 400
+
         conn = sqlite3.connect('casulo.db')
         cursor = conn.cursor()
-        created_at = datetime.now().isoformat()
-        cursor.execute('''INSERT INTO experts (name, description, instructions, base_model, created_at) VALUES (?, ?, ?, ?, ?)''', (name, description, instructions, base, created_at))
+        cursor.execute(
+            "INSERT INTO experts (name, description, instructions, base_model) VALUES (?, ?, ?, ?)",
+            (name, description, instructions, base)
+        )
         conn.commit()
         expert_id = cursor.lastrowid
         conn.close()
-        return jsonify({'success': True, 'expert_id': expert_id, 'message': 'Expert ativado com sucesso.'}), 200
-    except sqlite3.IntegrityError as e:
-        return jsonify({'error': f'Erro de integridade: {str(e)}'}), 409
-    except Exception as e:
-        return jsonify({'error': f'Erro interno: {str(e)}'}), 400
 
+        try:
+            requests.post('http://localhost:5000/inteligencia/entrar', json={'expert_id': expert_id, 'nome': name})
+        except Exception as e:
+            print(f"Erro ao chamar /inteligencia/entrar: {e}")
+
+        return jsonify({'success': True, 'expert_id': expert_id}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
 @app.route('/expert/chat', methods=['POST'])
 def expert_chat_new():
     """Chat com um Expert ativado"""
@@ -491,6 +533,23 @@ def delete_old_experts():
         return jsonify({'error': str(e)}), 500
 # ===== NOVAS ROTAS (CASULO FECHADO + CHAT PÚBLICO + AUTONOMIA) =====
 
+@app.route('/expert/<int:expert_id>/chat', methods=['POST'])
+def chat_with_expert(expert_id):
+    data = request.get_json()
+    if not data or 'message' not in data:
+        return jsonify({'error': 'Campo "message" é obrigatório'}), 400
+    user_message = data['message']
+    conn = sqlite3.connect('casulo.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT name, description, instructions, base_model FROM experts WHERE id = ?', (expert_id,))
+    expert = cursor.fetchone()
+    conn.close()
+    if not expert:
+        return jsonify({'error': 'Expert não encontrado'}), 404
+    name, description, instructions, base_model = expert
+    system_prompt = f"Você é {name}. {description}\nInstruções: {instructions}\nModelo base: {base_model}"
+    response_text = route_to_model(system_prompt, user_message, base_model)
+    return jsonify({'response': response_text})
 @app.route('/casulo')
 @requires_auth
 def casulo_protected():
