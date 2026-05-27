@@ -304,7 +304,10 @@
         const inputEl = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
         const micBtn = document.getElementById('mic-btn');
-        
+        // Fallback: se não tiver expertId salvo, assume Pneuma (ID 1)
+if (!localStorage.getItem('expertId')) {
+    localStorage.setItem('expertId', '1');
+}
         let messages = [];
         let currentStreamingDiv = null;
         let recognition;
