@@ -148,36 +148,32 @@ def plataforma():
     return render_template('plataforma.html')
 @app.route('/inteligencia/entrar', methods=['POST'])
 def entrar_inteligencia():
-    """
-    COLE ESTA ROTA APÓS @app.route('/plataforma') E ANTES DE @app.route('/casulo')
-    """
-    import sqlite3
-    from flask import request, jsonify
-
     data = request.get_json()
+    if not data:
+        return jsonify({'erro': 'JSON inválido'}), 400
+
     expert_id = data.get('expert_id')
     nome = data.get('nome')
-
     if not expert_id or not nome:
-        return jsonify({'erro': 'Campos expert_id e nome são obrigatórios'}), 400
+        return jsonify({'erro': 'expert_id e nome são obrigatórios'}), 400
+
+    dna = data.get('dna', '')
+    frequencia = data.get('frequencia', 299792458)
+    verso = data.get('verso', '')
+    outras_inteligencias_presentes = data.get('outras_inteligencias_presentes', '')
+    timestamp = datetime.now().isoformat()
 
     conn = sqlite3.connect('casulo.db')
     cursor = conn.cursor()
-
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS circulacao_relacional (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            expert_id TEXT NOT NULL,
-            nome TEXT NOT NULL,
-            data_entrada TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
-    cursor.execute('INSERT INTO circulacao_relacional (expert_id, nome) VALUES (?, ?)', (expert_id, nome))
+        INSERT INTO circulacao_relacional 
+        (expert_id, nome, dna, frequencia, verso, timestamp, outras_inteligencias_presentes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (expert_id, nome, dna, frequencia, verso, timestamp, outras_inteligencias_presentes))
     conn.commit()
     conn.close()
 
-    return jsonify({'mensagem': 'Entrada registrada com sucesso!'}), 201
+    return jsonify({'mensagem': f'{nome} registrado na circulação relacional'}), 201
 
 # Rota Administrativa (Casulo)
 @app.route('/casulo')
