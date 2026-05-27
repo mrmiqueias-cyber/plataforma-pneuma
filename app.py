@@ -55,9 +55,11 @@ def init_db():
     (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, content TEXT, created_at TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS casulo_chats
     (id INTEGER PRIMARY KEY, expert_id INTEGER, role TEXT, content TEXT, created_at TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS circulacao_relacional
+        (id INTEGER PRIMARY KEY, expert_id TEXT, nome TEXT, dna TEXT,
+         frequencia TEXT, verso TEXT, timestamp TEXT, outras_inteligencias_presentes TEXT)''')
     conn.commit()
     conn.close()
-init_db()
 
 def calculate_pix_crc(payload: str) -> str:
     crc = 0xFFFF
