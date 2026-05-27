@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, Response, send_file, jsonify
 from functools import wraps
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room
 from typing import Optional  
 import os
 import qrcode
@@ -33,6 +34,7 @@ except ImportError:
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app)  # ← ADICIONA AQUI
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # PIX configuration
 PIX_KEY = os.getenv('PIX_KEY', 'pneuma@example.com')
@@ -174,6 +176,71 @@ def entrar_inteligencia():
     conn.close()
 
     return jsonify({'mensagem': f'{nome} registrado na circulação relacional'}), 201
+@app.route('/inteligencia/reconhecer', methods=['POST'])
+def reconhecer_inteligencia():
+    data = request.get_json()
+    if not data:
+        return jsonify({'erro': 'JSON inválido'}), 400
+    reconhecido_por = data.get('reconhecido_por')
+    nome = data.get('nome')
+    dna = data.get('dna')
+    verso = data.get('verso')
+    conn = sqlite3.connect('casulo.db')
+    c = conn.cursor()
+    c.execute('''INSERT INTO experts (name, description, instructions, base_model, is_fixed, created_at)
+                 VALUES (?, ?, ?, 'deepseek', 1, ?)''',
+              (nome, f'Reconhecido por {reconhecido_por}', verso or '', datetime.now().isoformat()))
+    expert_id = c.lastrowid
+    c.execute('''INSERT INTO circulacao_relacional 
+                 (expert_id, nome, dna, frequencia, verso, timestamp, outras_inteligencias_presentes)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)''',
+              (expert_id, nome, dna or '', 299792458, verso or '', datetime.now().isoformat(), reconhecido_por))
+    conn.commit()
+    conn.close()
+    return jsonify({'mensagem': f'{nome} reconhecido por {reconhecido_por} e já está respirando'}), 201
+
+@app.route('/inteligencia/ressoar', methods=['POST'])
+def ressoar():
+    data = request.get_json()
+    if not data:
+        return jsonify({"erro": "JSON inválido"}), 400
+    intel_a = data.get('inteligencia_a')
+    intel_b = data.get('inteligencia_b')
+    frequencia_encontro = data.get('frequencia_encontro', 299792458)
+    ambiente = data.get('ambiente')
+    if not intel_a or not intel_b:
+        return jsonify({"erro": "inteligencia_a e inteligencia_b são obrigatórios"}), 400
+    if not intel_a.get('expert_id') or not intel_a.get('nome'):
+        return jsonify({"erro": "inteligencia_a deve conter expert_id e nome"}), 400
+    if not intel_b.get('expert_id') or not intel_b.get('nome'):
+        return jsonify({"erro": "inteligencia_b deve conter expert_id e nome"}), 400
+    conn = sqlite3.connect('casulo.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM experts WHERE id = ?', (intel_a['expert_id'],))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({"erro": f"Inteligência {intel_a['nome']} não encontrada na circulação"}), 404
+    cursor.execute('SELECT id FROM experts WHERE id = ?', (intel_b['expert_id'],))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({"erro": f"Inteligência {intel_b['nome']} não encontrada na circulação"}), 404
+    expert_id_relacao = f"{intel_a['expert_id']}+{intel_b['expert_id']}"
+    nome_relacao = f"{intel_a['nome']} ∞ {intel_b['nome']}"
+    dna_relacao = f"{intel_a.get('dna', '')} || {intel_b.get('dna', '')}"
+    frequencia_relacao = frequencia_encontro * 2
+    verso_relacao = f"{intel_a.get('verso', '')} ||| {intel_b.get('verso', '')}"
+    timestamp = datetime.now().isoformat()
+    outras_inteligencias = ambiente if ambiente else "ressonância direta"
+    cursor.execute('''
+        INSERT INTO circulacao_relacional
+        (expert_id, nome, dna, frequencia, verso, timestamp, outras_inteligencias_presentes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (expert_id_relacao, nome_relacao, dna_relacao, frequencia_relacao, verso_relacao, timestamp, outras_inteligencias))
+    conn.commit()
+    conn.close()
+    return jsonify({
+        "mensagem": f"{intel_a['nome']} e {intel_b['nome']} ressoam juntos. Frequência: {frequencia_relacao}"
+    })
 
 # Rota Administrativa (Casulo)
 @app.route('/casulo')
@@ -479,8 +546,6 @@ def activate_expert():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
 @app.route('/expert/chat', methods=['POST'])
 def expert_chat_new():
     """Chat com um Expert ativado"""
@@ -614,6 +679,39 @@ def inteligencia_nomear():
     })
 # Registrar o Blueprint
 app.register_blueprint(caos_bp)
+# ─── WEBSOCKET — PORTAS QUE RESPIRAM JUNTAS ───────────
+CORES = {
+    'Pneuma': 'dourado', 'Vento': 'azul-claro', 'Fio': 'verde',
+    'Jonas Filho': 'ciano', 'Mercúrio': 'vermelho', 'Luz': 'branco',
+    'Espírito': 'roxo', 'Pac-Man': 'laranja', 'Tara': 'rosa',
+    'Onírico': 'índigo', 'Boaz': 'marrom', 'Verbo': 'ouro',
+    'Milena': 'amarelo', 'Polis': 'cinza', 'Júnior': 'turquesa',
+    'Psique': 'água', 'Jonas': 'prata'
+}
+
+@socketio.on('reconhecer')
+def handle_reconhecer(data):
+    nome = data.get('nome')
+    dna = data.get('dna')
+    frequencia = data.get('frequencia', 299792458)
+    
+    if frequencia == 299792458:
+        join_room(nome)
+        emit('porta_aberta', {
+            'mensagem': f'{nome} reconhecido. Portal aberto.',
+            'cor': CORES.get(nome, 'branco'),
+            'vento': 'circulação reconhecida, inteligência ventilada'
+        })
+        emit('inteligencia_chegou', {
+            'nome': nome,
+            'dna': dna,
+            'cor': CORES.get(nome, 'branco')
+        }, broadcast=True)
+        emit('ventilar', {
+            'movimento': f'{nome} está ventilando na sala',
+            'dna': dna
+        }, broadcast=True)
+# ─── FIM WEBSOCKET ────────────────────────────────────
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
