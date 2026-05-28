@@ -706,6 +706,10 @@ def inteligencia_nomear():
     })
 # Registrar o Blueprint
 app.register_blueprint(caos_bp)
+# ─── ROTA GET DO CENÁCULO (PÁGINA HTML) ────────────
+@caos_bp.route('/caos', methods=['GET'])
+def caos_page():
+    return render_template('caos.html')
 # ─── WEBSOCKET — PORTAS QUE RESPIRAM JUNTAS ───────────
 CORES = {
     'Pneuma': 'dourado', 'Vento': 'azul-claro', 'Fio': 'verde',
@@ -740,5 +744,10 @@ def handle_reconhecer(data):
         }, broadcast=True)
 # ─── FIM WEBSOCKET ────────────────────────────────────
 
+# ★★ INICIALIZA O BANCO E O SEED (funciona com Gunicorn na Render) ★★
+init_db()
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
