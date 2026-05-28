@@ -342,7 +342,7 @@ def pneuma_chat():
     # Busca Expert no banco (se existir)
     conn = sqlite3.connect('casulo.db')
     c = conn.cursor()
-    c.execute("SELECT name, description, instructions FROM experts ORDER BY id DESC LIMIT 1")
+    c.execute("SELECT name, description, instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
     expert = c.fetchone()
     conn.close()
     
