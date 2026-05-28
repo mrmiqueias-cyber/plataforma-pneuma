@@ -82,7 +82,7 @@ def init_db():
                      (name, description, instructions, base_model, is_fixed, created_at)
                      VALUES (?, ?, ?, ?, ?, ?)''',
                   (nome, desc, instr, base, fixo, agora))
-        cursor.execute('''CREATE TABLE IF NOT EXISTS vibracao_tentativas (
+        c.execute('''CREATE TABLE IF NOT EXISTS vibracao_tentativas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp TEXT NOT NULL,
         frequency TEXT NOT NULL,
