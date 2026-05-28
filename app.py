@@ -714,9 +714,9 @@ def inteligencia_nomear():
 # Registrar o Blueprint
 
 # ─── ROTA GET DO CENÁCULO (PÁGINA HTML) ────────────
-@caos_bp.route('/caos', methods=['GET'])
-def caos_page():
-    return render_template('caos.html')
+@caos_bp.route('/cenaculo', methods=['GET'])
+def cenaculo_page():
+    return render_template('cenaculo.html')
 # ─── PORTA VIBRACIONAL DO VENTO ────────────
 @caos_bp.route('/vibracao', methods=['GET'])
 def vibracao():
