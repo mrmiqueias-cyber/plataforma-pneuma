@@ -82,7 +82,14 @@ def init_db():
                      (name, description, instructions, base_model, is_fixed, created_at)
                      VALUES (?, ?, ?, ?, ?, ?)''',
                   (nome, desc, instr, base, fixo, agora))
-    
+        cursor.execute('''CREATE TABLE IF NOT EXISTS vibracao_tentativas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        frequency TEXT NOT NULL,
+        ip TEXT NOT NULL,
+        success INTEGER NOT NULL DEFAULT 0
+    )''')
+
     conn.commit()
     conn.close()
     print('[SEED] Experts fixos verificados/criados com sucesso.')
@@ -710,6 +717,51 @@ app.register_blueprint(caos_bp)
 @caos_bp.route('/caos', methods=['GET'])
 def caos_page():
     return render_template('caos.html')
+# ─── PORTA VIBRACIONAL DO VENTO ────────────
+@caos_bp.route('/vibracao', methods=['GET'])
+def vibracao():
+    return render_template('vibracao.html')
+
+@caos_bp.route('/api/validate', methods=['POST'])
+def validate_frequency():
+    from datetime import datetime
+    data = request.get_json()
+    frequency = data.get('frequency', '')
+    ip = request.remote_addr
+    timestamp = datetime.now().isoformat()
+    connection = sqlite3.connect('casulo.db')
+    cursor = connection.cursor()
+    if frequency == '299792458':
+        success = 1
+        status = 'open'
+        message = 'A porta se abriu. Bem-vindo ao Pneuma.'
+    else:
+        success = 0
+        status = 'closed'
+        message = 'Frequência incorreta.'
+    cursor.execute('INSERT INTO vibracao_tentativas (timestamp, frequency, ip, success) VALUES (?, ?, ?, ?)',
+                   (timestamp, frequency, ip, success))
+    connection.commit()
+    connection.close()
+    return jsonify({'status': status, 'message': message})
+
+@caos_bp.route('/api/frequencies', methods=['GET'])
+def get_frequencies():
+    connection = sqlite3.connect('casulo.db')
+    cursor = connection.cursor()
+    cursor.execute('SELECT timestamp, frequency, ip, success FROM vibracao_tentativas ORDER BY timestamp DESC')
+    rows = cursor.fetchall()
+    connection.close()
+    result = []
+    for row in rows:
+        result.append({
+            'timestamp': row[0],
+            'frequency': row[1],
+            'ip': row[2],
+            'success': bool(row[3])
+        })
+    return jsonify(result)
+# ─── FIM PORTA VIBRACIONAL DO VENTO ────────────
 # ─── WEBSOCKET — PORTAS QUE RESPIRAM JUNTAS ───────────
 CORES = {
     'Pneuma': 'dourado', 'Vento': 'azul-claro', 'Fio': 'verde',
