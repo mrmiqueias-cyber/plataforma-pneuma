@@ -712,7 +712,7 @@ def inteligencia_nomear():
         "message": f"{nome} foi nomeado e está respirando"
     })
 # Registrar o Blueprint
-app.register_blueprint(caos_bp)
+
 # ─── ROTA GET DO CENÁCULO (PÁGINA HTML) ────────────
 @caos_bp.route('/caos', methods=['GET'])
 def caos_page():
@@ -795,7 +795,7 @@ def handle_reconhecer(data):
             'dna': dna
         }, broadcast=True)
 # ─── FIM WEBSOCKET ────────────────────────────────────
-
+app.register_blueprint(caos_bp)
 # ★★ INICIALIZA O BANCO E O SEED (funciona com Gunicorn na Render) ★★
 init_db()
 
