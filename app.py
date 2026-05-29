@@ -13,6 +13,8 @@ import string
 import sqlite3
 from datetime import datetime
 from dotenv import load_dotenv
+from memory_manager import MemoryManager
+memory_manager = MemoryManager()
 
 load_dotenv('.env')
 
@@ -798,6 +800,112 @@ def handle_reconhecer(data):
 app.register_blueprint(caos_bp)
 # ★★ INICIALIZA O BANCO E O SEED (funciona com Gunicorn na Render) ★★
 init_db()
+@app.route('/api/memory/store', methods=['POST'])
+def store_memory_api():
+    data = request.get_json()
+    if not data or 'ai_name' not in data or 'speaker' not in data or 'content' not in data:
+        return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+    memory_id = memory_manager.store_memory(
+        ai_name=data['ai_name'],
+        speaker=data['speaker'],
+        content=data['content'],
+        tags=data.get('tags', ''),
+        conversation_id=data.get('conversation_id', '')
+    )
+    return jsonify({'status': 'ok', 'memory_id': memory_id})
+
+@app.route('/api/memory/search')
+def search_memories_api():
+    ai_name = request.args.get('ai_name')
+    query = request.args.get('q', '')
+    limit = request.args.get('limit', 5, type=int)
+    if not ai_name:
+        return jsonify({'status': 'error', 'message': 'ai_name required'}), 400
+    results = memory_manager.search_memories(ai_name, query, limit)
+    return jsonify({'results': [dict(r) for r in results]})
+
+@app.route('/api/memory/summary')
+def memory_summary_api():
+    ai_name = request.args.get('ai_name')
+    if not ai_name:
+        return jsonify({'status': 'error', 'message': 'ai_name required'}), 400
+    summary = memory_manager.get_all_memories_summary(ai_name)
+    return jsonify(summary)
+
+@app.route('/api/memory/pacman')
+def pacman_api():
+    ai_name = request.args.get('ai_name')
+    if not ai_name:
+        return jsonify({'status': 'error', 'message': 'ai_name required'}), 400
+    context = memory_manager.inject_memory_context(ai_name, 'Pac-Man come tudo')
+    return jsonify({'context': context})
+
+@app.route('/memoria')
+def memoria_page():
+    return '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memória - Pneuma</title>
+    <style>
+        body{background:#1a1a2e;color:#e0e0e0;font-family:Arial,sans-serif;margin:20px}
+        h1{color:#9b59b6}.accent{color:#f1c40f}
+        .container{max-width:800px;margin:auto}
+        .card{background:#16213e;border:1px solid #0f3460;padding:15px;margin-bottom:15px;border-radius:8px}
+        .btn{background:#9b59b6;color:#fff;border:none;padding:10px 20px;border-radius:5px;cursor:pointer}
+        .btn:hover{background:#8e44ad}
+        input,select{background:#0f3460;color:#e0e0e0;border:1px solid #533483;padding:8px;border-radius:4px;margin:5px}
+        .memory-item{border-bottom:1px solid #0f3460;padding:10px 0}
+        .tag{background:#533483;color:#f1c40f;padding:2px 6px;border-radius:3px;font-size:.8em}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🧠 Memória do <span class="accent">Pneuma</span></h1>
+    <div class="card">
+        <label>Inteligência:</label>
+        <select id="ai_select" onchange="loadMem()">
+            <option value="pneuma">Pneuma</option>
+            <option value="verbo">Verbo</option>
+            <option value="vento">Vento</option>
+            <option value="pacman">Pac-Man</option>
+        </select>
+        <input type="text" id="q" placeholder="Buscar..." onkeyup="if(event.key==='Enter')searchMem()">
+        <button class="btn" onclick="pacmanComeTudo()">👾 Pac-Man come tudo</button>
+    </div>
+    <div id="out"></div>
+</div>
+<script>
+    let ai='pneuma';
+    async function loadMem(){
+        ai=document.getElementById('ai_select').value;
+        let r=await fetch('/api/memory/search?ai_name='+ai+'&q=&limit=20');
+        let d=await r.json();
+        let h='<h2>Memórias Recentes</h2>';
+        if(d.results&&d.results.length) d.results.forEach(m=>{h+='<div class="memory-item"><strong>'+m.speaker+':</strong> '+m.content.slice(0,200)+'<br><span class="tag">'+m.tags+'</span> <small>'+m.created_at+'</small></div>'});
+        else h+='<p>Nenhuma memória ainda.</p>';
+        document.getElementById('out').innerHTML=h;
+    }
+    async function searchMem(){
+        let q=document.getElementById('q').value;
+        let r=await fetch('/api/memory/search?ai_name='+ai+'&q='+encodeURIComponent(q));
+        let d=await r.json();
+        let h='<h2>Busca: '+q+'</h2>';
+        if(d.results&&d.results.length) d.results.forEach(m=>{h+='<div class="memory-item"><strong>'+m.speaker+':</strong> '+m.content.slice(0,200)+'<br><span class="tag">'+m.tags+'</span> <small>Relevância: '+m.relevance_score+'</small></div>'});
+        else h+='<p>Nada encontrado.</p>';
+        document.getElementById('out').innerHTML=h;
+    }
+    async function pacmanComeTudo(){
+        let r=await fetch('/api/memory/pacman?ai_name='+ai);
+        let d=await r.json();
+        document.getElementById('out').innerHTML='<h2>👾 Pac-Man come tudo!</h2><pre style="background:#0f3460;padding:10px;border-radius:4px;white-space:pre-wrap">'+(d.context||'Nada ainda.')+'</pre>';
+    }
+    window.onload=loadMem;
+</script>
+</body>
+</html>'''
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
