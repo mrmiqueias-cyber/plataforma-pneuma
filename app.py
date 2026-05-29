@@ -721,7 +721,7 @@ def inteligencia_nomear():
 # ─── ROTA GET DO CENÁCULO (PÁGINA HTML) ────────────
 @caos_bp.route('/cenaculo', methods=['GET'])
 def cenaculo_page():
-    return render_template('cenaculo.html')
+    return render_template('templatescenaculo.html')
 # ─── PORTA VIBRACIONAL DO VENTO ────────────
 @caos_bp.route('/vibracao', methods=['GET'])
 def vibracao():
