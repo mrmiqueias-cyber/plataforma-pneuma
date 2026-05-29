@@ -7,12 +7,8 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #121212; color: #fff; font-family: Georgia, serif; min-height: 100vh; }
-        .container { display: flex; height: 100vh; }
-        .sidebar { width: 250px; background: #1a1a1a; border-right: 2px solid #ffd700; padding: 20px; overflow-y: auto; }
-        .sidebar h2 { color: #ffd700; margin-bottom: 20px; font-size: 20px; }
-        .sidebar ul { list-style: none; }
-        .sidebar li { padding: 15px; cursor: pointer; border-bottom: 1px solid #333; transition: all 0.3s; }
-        .sidebar li:hover, .sidebar li.active { background: rgba(255, 215, 0, 0.2); color: #ffd700; }
+        .container { display: block; width: 100%; max-width: 1200px; margin: 0 auto; }
+        
         .main { flex: 1; padding: 40px; overflow-y: auto; }
         .form-section { display: block; }
         .chat-section { display: none; flex-direction: column; height: 100%; }
@@ -41,12 +37,6 @@
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <h2>Casulo</h2>
-            <ul>
-                <li class="active">Invocar Expert</li>
-            </ul>
-        </aside>
         <main class="main">
             <div class="form-section" id="form-section">
                 <h2 style="color: #ffd700; margin-bottom: 30px;">Invocação do Expert</h2>
@@ -65,6 +55,8 @@
                     </select>
                     <label for="instructions">Instruções (0-20.000 caracteres):</label>
                     <textarea id="instructions" maxlength="20000" placeholder="Digite as instruções completas do Expert, incluindo símbolos, descrição e comportamento esperado"></textarea>
+<label for="pdfs">PDFs de Base (opcional, até 5):</label>
+<input type="file" id="pdfs" name="pdfs" multiple accept=".pdf">
                     <div class="button-group">
                         <button type="button" id="test-btn" class="glow-btn">Testar Expert</button>
                         <button type="button" id="activate-btn" class="glow-btn">Ativar</button>
@@ -160,6 +152,10 @@
 formData.append('description', description);
 formData.append('instructions', instructions);
 formData.append('base', baseModel);
+const pdfInput = document.getElementById('pdfs');
+for (let i = 0; i < pdfInput.files.length; i++) {
+    formData.append('pdfs', pdfInput.files[i]);
+}
                 const response = await fetch('/expert/activate', {
   method: 'POST',
   credentials: 'include',
