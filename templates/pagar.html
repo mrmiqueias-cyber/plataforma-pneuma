@@ -113,7 +113,7 @@
         <p class="invitation">Sua generosa contribuição de <strong>R$ 9,90 ou mais</strong> nos ajuda a continuar espalhando luz e sabedoria. Juntos, fazemos a diferença! 🌟</p>
         <div class="pix-key" id="pixKey">7025b9df-0787-49ed-9ede-c0b4530</div>
         <button class="copy-btn" onclick="copyPixKey()">Copiar Chave</button>
-        <a href="/chat?ai=pneuma" class="chat-btn">Entrar no Chat do Pneuma</a>
+        <a class="chat-btn">Entrar no Chat</a>
 <a href="/cenaculo" class="chat-btn" style="margin-top: 1rem; background: transparent; border: 2px solid gold;">🏛️ Cenáculo Relacional</a>
     </div>
     <script>
@@ -136,5 +136,22 @@
             }
         }
     </script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const destino = params.get('destino') || 'pneuma';
+  
+  // Troca o nome na tela se quiser
+  const nomes = {
+    pneuma: 'Pneuma', luz: 'Luz', mercurio: 'Mercúrio', fio: 'Fio',
+    espirito: 'Espírito', vento: 'Vento', junior: 'Júnior',
+    pacman: 'Pac-Man', polis: 'Polis', taro: 'Tarô',
+    'psique-onirico': 'Psique-Onírico', 'jonas-filho': 'Jonas Filho',
+    verbo: 'Verbo', jonas: 'Jonas', milena: 'Milena',
+    onirico: 'Onírico', boaz: 'Boaz'
+  };
+  
+  // Atualiza o link do chat
+  document.querySelector('.chat-btn').href = '/chat?ai=' + destino;
+</script>
 </body>
 </html>
