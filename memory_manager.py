@@ -121,4 +121,44 @@ class MemoryManager:
             'last_interactions': last_interactions
         }
 
-    def generate_summary(self, ai_name, memory_ids
+    def generate_summary(self, ai_name, memory_ids):
+        conn = self.get_connection()
+        c = conn.cursor()
+        placeholders = ','.join('?' for _ in memory_ids)
+        c.execute(f'SELECT content FROM memories WHERE id IN ({placeholders})', memory_ids)
+        rows = c.fetchall()
+        all_text = ' '.join([row['content'] for row in rows])
+        summary = all_text[:500] if len(all_text) > 500 else all_text
+        tags = self.extract_keywords(all_text)
+        source_ids = ','.join(str(mid) for mid in memory_ids)
+        c.execute('''
+            INSERT INTO memory_summaries (ai_name, summary_text, tags, source_memory_ids)
+            VALUES (?, ?, ?, ?)
+        ''', (ai_name, summary, tags, source_ids))
+        conn.commit()
+        conn.close()
+        logger.info(f"Summary generated for ai={ai_name}, memories={memory_ids}")
+
+    def inject_memory_context(self, ai_name, user_message):
+        # Detecta Pac-Man come tudo
+        if re.search(r'\bpac[-\s]?man\s+(come\s+tudo|17)\b', user_message, re.IGNORECASE):
+            summary = self.get_all_memories_summary(ai_name)
+            context = "[MEMORIA: PAC-MAN COME TUDO ATIVADO]\n"
+            context += f"Total de conversas: {summary['total_conversations']}\n"
+            context += "Temas mais recorrentes:\n"
+            for theme in summary['top_themes']:
+                context += f"- {theme['tags']} ({theme['cnt']} ocorrencias)\n"
+            context += "Ultimas 5 interacoes:\n"
+            for inter in summary['last_interactions']:
+                context += f"[{inter['created_at']}] {inter['content'][:100]}...\n"
+            return context
+        # Detecta palavras-chave de memoria
+        memory_keywords = ['lembrar', 'lembra', 'memoria', 'memorias', 'anterior', 'antes', 'conversa', 'falamos', 'dissemos']
+        if any(kw in user_message.lower() for kw in memory_keywords):
+            memories = self.search_memories(ai_name, user_message, limit=5)
+            if memories:
+                context = "[MEMORIA RECUPERADA]\n"
+                for mem in memories:
+                    context += f"- {mem['speaker']}: {mem['content'][:200]} (relevancia: {mem['relevance_score']})\n"
+                return context
+        return None
