@@ -214,7 +214,7 @@ def entrar_inteligencia():
     return jsonify({'mensagem': f'{nome} registrado na circulação relacional'}), 201
 @app.route('/sala')
 def sala():
-    return render_template('cenaculo.html')
+    return render_template('templatescenaculo.html')
 @app.route('/inteligencia/reconhecer', methods=['POST'])
 def reconhecer_inteligencia():
     data = request.get_json()
