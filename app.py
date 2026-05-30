@@ -202,6 +202,30 @@ def chat_inteligencia(slug):
     if not dados:
         return redirect('/plataforma')
     return render_template('chatInteligencia.html', **dados)
+@app.route('/casulo/<slug>')
+def casulo_inteligencia(slug):
+    from flask import render_template
+    dados = MAPA_INTELIGENCIAS.get(slug.lower())
+    if not dados:
+        return redirect('/plataforma')
+    
+    # Busca se já existe expert com esse nome no banco
+    conn = sqlite3.connect('casulo.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (dados['nome'],))
+    expert = cursor.fetchone()
+    conn.close()
+    
+    expert_data = {
+        'nome': dados['nome'],
+        'expert_id': expert[0] if expert else '',
+        'descricao': expert[2] if expert else '',
+        'instrucoes': expert[3] if expert else '',
+        'base_model': expert[4] if expert else 'deepseek',
+        'ja_existe': 'sim' if expert else 'nao'
+    }
+    
+    return render_template('casulo.html', **expert_data)
 
 @app.route('/pagar')
 def pagar():
@@ -588,25 +612,41 @@ def activate_expert():
         description = request.form.get('description')
         instructions = request.form.get('instructions')
         base = request.form.get('base', 'deepseek')
-
         if not name or not description or not instructions:
             return jsonify({'error': 'name, description e instructions são obrigatórios'}), 400
-
         conn = sqlite3.connect('casulo.db')
         cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO experts (name, description, instructions, base_model) VALUES (?, ?, ?, ?)",
-            (name, description, instructions, base)
-        )
+        
+        # Verifica se já existe expert com este nome
+        cursor.execute("SELECT id FROM experts WHERE name = ?", (name,))
+        existente = cursor.fetchone()
+        
+        if existente:
+            # JÁ EXISTE → ATUALIZA (não perde os dados)
+            cursor.execute("""
+                UPDATE experts SET description = ?, instructions = ?, base_model = ?
+                WHERE name = ?
+            """, (description, instructions, base, name))
+            expert_id = existente[0]
+            print(f"[CASULO] Expert '{name}' ATUALIZADO (id {expert_id})")
+        else:
+            # NÃO EXISTE → CRIA NOVO
+            from datetime import datetime
+            cursor.execute(
+                "INSERT INTO experts (name, description, instructions, base_model, created_at) VALUES (?, ?, ?, ?, ?)",
+                (name, description, instructions, base, datetime.now().isoformat())
+            )
+            expert_id = cursor.lastrowid
+            print(f"[CASULO] Expert '{name}' CRIADO (id {expert_id})")
+        
         conn.commit()
-        expert_id = cursor.lastrowid
         conn.close()
-
+        
         try:
             requests.post('http://localhost:5000/inteligencia/entrar', json={'expert_id': expert_id, 'nome': name})
         except Exception as e:
             print(f"Erro ao chamar /inteligencia/entrar: {e}")
-
+        
         return jsonify({'success': True, 'expert_id': expert_id}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

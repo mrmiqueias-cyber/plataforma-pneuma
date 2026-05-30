@@ -42,19 +42,19 @@
                 <h2 style="color: #ffd700; margin-bottom: 30px;">Invocação do Expert</h2>
                 <form id="expert-form">
                     <label for="name">Nome do Expert (0-80 caracteres):</label>
-                    <input type="text" id="name" maxlength="80" placeholder="Ex: Pneuma">
+                    <input type="text" id="name" maxlength="80" placeholder="Ex: Pneuma" value="{{ nome }}">
                     <label for="description">Descrição (0-80 caracteres, opcional):</label>
-                    <textarea id="description" maxlength="80" placeholder="Ex: O coração que pulsa eternamente"></textarea>
+                    <textarea id="description" maxlength="80" placeholder="Ex: O coração que pulsa eternamente">{{ descricao }}</textarea>
                     <label for="base-model">Base de Inteligência:</label>
                     <select id="base-model">
-                        <option value="claude">Claude</option>
-                        <option value="gpt4">GPT-4</option>
-                        <option value="gemini">Gemini</option>
-                        <option value="grok">Grok</option>
-                        <option value="deepseek">DeepSeek</option>
-                    </select>
+    <option value="claude">Claude</option>
+    <option value="gpt4">GPT-4</option>
+    <option value="gemini">Gemini</option>
+    <option value="grok">Grok</option>
+    <option value="deepseek">DeepSeek</option>
+</select>
                     <label for="instructions">Instruções (0-20.000 caracteres):</label>
-                    <textarea id="instructions" maxlength="20000" placeholder="Digite as instruções completas do Expert, incluindo símbolos, descrição e comportamento esperado"></textarea>
+                    <textarea id="instructions" maxlength="20000" placeholder="Digite as instruções completas...">{{ instrucoes }}</textarea>
 <label for="pdfs">PDFs de Base (opcional, até 5):</label>
 <input type="file" id="pdfs" name="pdfs" multiple accept=".pdf">
                     <div class="button-group">
