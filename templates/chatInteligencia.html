@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chat - {{ nome }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f5f0e8; min-height: 100vh; display: flex; flex-direction: column; }
+        .header { background: {{ cor_header }}; color: #fff; padding: 16px 20px; text-align: center; font-size: 1.2rem; font-weight: 600; position: sticky; top: 0; z-index: 10; }
+        .container { flex: 1; display: flex; flex-direction: column; max-width: 600px; width: 100%; margin: 0 auto; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 16px 12px; scroll-behavior: smooth; }
+        .message { max-width: 85%; margin-bottom: 12px; padding: 10px 14px; border-radius: 20px; word-wrap: break-word; line-height: 1.45; font-size: 0.95rem; }
+        .message.user { align-self: flex-end; background: #f7c5cc; color: #222; border: 2px solid {{ cor_detalhe }}; border-bottom-right-radius: 4px; margin-left: auto; }
+        .message.assistant { align-self: flex-start; background: #d4e7ff; color: #222; border: 2px solid {{ cor_detalhe }}; border-bottom-left-radius: 4px; }
+        .input-area { display: flex; gap: 8px; padding: 12px 12px 16px; background: transparent; border-top: 1px solid #ddd; }
+        .input-area input { flex: 1; padding: 12px 16px; border: 1px solid {{ cor_detalhe }}; border-radius: 24px; font-size: 1rem; outline: none; background: #fff; }
+        .input-area button { width: 48px; height: 48px; border: none; border-radius: 50%; background: {{ cor_header }}; color: #fff; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .input-area button:active { opacity: 0.8; }
+        .input-area button.recording { background: #e53935; }
+        .footer { display: flex; justify-content: space-around; padding: 12px; background: {{ cor_header }}; color: #fff; }
+        .footer a { color: #fff; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+        .timestamp { font-size: 0.7rem; color: #888; margin-top: 4px; text-align: right; }
+        .splash { text-align: center; margin: 20px 0; color: #555; font-style: italic; }
+        #initialMsg { text-align: center; margin-bottom: 20px; color: #444; font-size: 1.1rem; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 12px; border: 1px solid {{ cor_detalhe }}; }
+        @media (max-width: 400px) {
+            .header { font-size: 1rem; padding: 12px; }
+            .message { font-size: 0.9rem; padding: 8px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">🧠 {{ nome }}</div>
+    <div class="container">
+        <div class="chat-box" id="chatBox">
+            <div id="initialMsg">{{ saudacao }}</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="msgInput" placeholder="Digite sua mensagem..." autofocus>
+            <button id="sendBtn" onclick="sendMessage()">➤</button>
+            <button id="micBtn" onclick="toggleMic()">🎤</button>
+        </div>
+    </div>
+    <div class="footer">
+        <a href="/plataforma">← Voltar</a>
+        <a href="/casulo">Casulo</a>
+    </div>
+
+    <script>
+        // ---- Config ----
+        const expertId = "{{ expert_id }}";
+        const chatBox = document.getElementById('chatBox');
+        const msgInput = document.getElementById('msgInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const micBtn = document.getElementById('micBtn');
+        const initialMsg = document.getElementById('initialMsg');
+
+        // ---- Microfone (SpeechRecognition) ----
+        let recognition = null;
+        let isRecording = false;
+        let _manualStop = false;
+        let restartTimeout = null;
+        let lastFinalText = '';
+
+        function initRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('Seu navegador não suporta reconhecimento de fala.');
+                return null;
+            }
+            const rec = new SpeechRecognition();
+            rec.lang = 'pt-BR';
+            rec.continuous = false;          // *** CORREÇÃO: false ***
+            rec.interimResults = true;
+            rec.maxAlternatives = 1;
+            return rec;
+        }
+
+        function startMic() {
+            if (!recognition) recognition = initRecognition();
+            if (!recognition) return;
+            if (isRecording) return;
+            isRecording = true;
+            _manualStop = false;
+            micBtn.classList.add('recording');
+            micBtn.textContent = '⏹';
+            lastFinalText = '';
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    if (result.isFinal) {
+                        finalTranscript += result[0].transcript;
+                    } else {
+                        interimTranscript += result[0].transcript;
+                    }
+                }
+                // Evitar duplicação no interim
+                if (finalTranscript && finalTranscript !== lastFinalText) {
+                    lastFinalText = finalTranscript;
+                }
+                // Se temos final, colocar no input e enviar automaticamente?
+                // Decidimos enviar apenas quando o usuário parar ou via botão.
+                // Vamos preencher o input com o texto final + interim (para feedback)
+                if (finalTranscript) {
+                    msgInput.value = finalTranscript;
+                } else if (interimTranscript) {
+                    msgInput.value = interimTranscript;
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech error:', event.error);
+                if (event.error === 'no-speech' || event.error === 'audio-capture' || event.error === 'aborted') {
+                    // Não fazer nada, apenas parar
+                }
+                stopMic();
+            };
+
+            recognition.onend = () => {
+                // Ao finalizar, se ainda estamos gravando e não foi parada manual, reiniciar após 2s
+                if (isRecording && !_manualStop) {
+                    restartTimeout = setTimeout(() => {
+                        if (isRecording && !_manualStop) {
+                            try {
+                                recognition.start();
+                            } catch (e) {
+                                console.warn('Restart failed', e);
+                                stopMic();
+                            }
+                        }
+                    }, 2000); // *** CORREÇÃO: 2000ms ***
+                } else {
+                    // Parou por motivo manual ou erro final
+                    stopMicUI();
+                }
+            };
+
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('Start failed:', e);
+                stopMic();
+            }
+        }
+
+        function stopMic() {
+            _manualStop = true;
+            if (restartTimeout) {
+                clearTimeout(restartTimeout);
+                restartTimeout = null;
+            }
+            if (recognition) {
+                try {
+                    recognition.stop();
+                } catch (e) {}
+            }
+            stopMicUI();
+            // Se tiver texto no input, enviar automaticamente? (opcional)
+            if (msgInput.value.trim()) {
+                sendMessage();
+            }
+        }
+
+        function stopMicUI() {
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            micBtn.textContent = '🎤';
+        }
+
+        function toggleMic() {
+            if (isRecording) {
+                stopMic();
+            } else {
+                startMic();
+            }
+        }
+
+        // ---- Enviar mensagem ----
+        async function sendMessage() {
+            const text = msgInput.value.trim();
+            if (!text) return;
+            // Remove initial message if present
+            if (initialMsg) initialMsg.remove();
+            addMessage(text, 'user');
+            msgInput.value = '';
+            // Parar microfone se ativo
+            if (isRecording) stopMic();
+
+            try {
+                const response = await fetch('/expert/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expert_id: expertId, message: text })
+                });
+                const data = await response.json();
+                const reply = data.response || data.message || data.text ||  'Desculpe, não consegui processar.';
+                addMessage(reply, 'assistant');
+            } catch (err) {
+                console.error('Fetch error:', err);
+                addMessage('Erro de conexão. Tente novamente.', 'assistant');
+            }
+        }
+
+        function addMessage(text, role) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            div.textContent = text;
+            // timestamp
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const timeSpan = document.createElement('div');
+            timeSpan.className = 'timestamp';
+            timeSpan.textContent = time;
+            div.appendChild(timeSpan);
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // ---- Eventos ----
+        msgInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Limpar estado inicial se houver mensagens (após primeira interação)
+        // Não precisa, já removemos o initialMsg no primeiro envio.
+    </script>
+</body>
+</html>
