@@ -37,7 +37,15 @@ try:
     import google.generativeai as genai
 except ImportError:
     genai = None
+from functools import wraps
 
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app)  # ← ADICIONA AQUI
 socketio = SocketIO(app, cors_allowed_origins="*")
