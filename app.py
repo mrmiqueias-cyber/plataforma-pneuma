@@ -61,7 +61,10 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 # Inicializar banco de dados
 def init_db():
     conn = sqlite3.connect('casulo.db')
+    conn.execute("PRAGMA journal_mode=WAL")       # ← 4 espaços de indentação
+    conn.execute("PRAGMA busy_timeout=5000")       # ← 4 espaços de indentação
     c = conn.cursor()
+    # ========== TABELAS ==========
     
     # ========== TABELAS ==========
     c.execute('''CREATE TABLE IF NOT EXISTS experts
@@ -787,6 +790,8 @@ def validate_frequency():
     ip = request.remote_addr
     timestamp = datetime.now().isoformat()
     connection = sqlite3.connect('casulo.db')
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA busy_timeout=5000")
     cursor = connection.cursor()
     if frequency == '299792458':
         success = 1
