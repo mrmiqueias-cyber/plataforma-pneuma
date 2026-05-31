@@ -246,6 +246,8 @@ def reconhecer_inteligencia():
     dna = data.get('dna')
     verso = data.get('verso')
     conn = sqlite3.connect('casulo.db')
+conn.execute("PRAGMA journal_mode=WAL")
+conn.execute("PRAGMA busy_timeout=5000")
     c = conn.cursor()
     c.execute('''INSERT INTO experts (name, description, instructions, base_model, is_fixed, created_at)
                  VALUES (?, ?, ?, 'deepseek', 1, ?)''',
@@ -275,6 +277,8 @@ def ressoar():
     if not intel_b.get('expert_id') or not intel_b.get('nome'):
         return jsonify({"erro": "inteligencia_b deve conter expert_id e nome"}), 400
     conn = sqlite3.connect('casulo.db')
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM experts WHERE id = ?', (intel_a['expert_id'],))
     if not cursor.fetchone():
@@ -374,6 +378,8 @@ def pneuma_chat():
     
     # Busca Expert no banco (se existir)
     conn = sqlite3.connect('casulo.db')
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     c = conn.cursor()
     c.execute("SELECT name, description, instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
     expert = c.fetchone()
