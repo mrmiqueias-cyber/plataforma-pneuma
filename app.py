@@ -15,6 +15,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from memory_manager import MemoryManager
 memory_manager = MemoryManager()
+# === MEMÓRIA ESPIRAL ===
+from memoria_espiral import MemoriaEspiral, RegistroEspiral
+# Corpo da memória — persiste em JSON na raiz do projeto
+memoria = MemoriaEspiral(caminho_snapshot="memoria_espiral.json")
 
 load_dotenv('.env')
 
@@ -671,12 +675,30 @@ def expert_chat_new():
         
         name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
+        # --- MEMÓRIA: carrega contexto espiral ---contexto = memoria.espiral_contexto(user_message[:20], expert_id, profundidade=3)
+        if contexto:
+            prefacio = f"Contexto relacional com este usuário:\n"
+            for i, reg in enumerate(contexto, 1):
+                eco = reg.resposta[:80]
+                prefacio += f"{i}. Tom: '{reg.tom}', Freq: {reg.frequencia} Hz, Eco: '{eco}...'\n"
+            instructions = instructions + "\n\n" + prefacio
         
         # Monta o system prompt com o DNA do Expert
         system_prompt = f"Você é {name}. {description}\n\n{instructions}"
         
         # Roteia para a IA correta
         response = route_to_model(system_prompt, user_message, base_model)
+        # --- MEMÓRIA: registra o encontro ---
+        registro = RegistroEspiral(
+            user_id=user_message[:20],  # primeiros 20 chars como identificador
+            expert_id=str(expert_id),
+            mensagem=user_message,
+            resposta=response,
+            tom="poetico",
+            frequencia=299792458,
+            tags=["conversa", name.lower()]
+        )
+        memoria.adicionar(registro)
         return jsonify({"response": response})
     except Exception as e:
         return jsonify({"response": f"Erro: {str(e)}"}), 400
