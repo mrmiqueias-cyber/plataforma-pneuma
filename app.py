@@ -182,9 +182,11 @@ def casulo_inteligencia(slug):
     
     # Busca se já existe expert com esse nome no banco
     conn = sqlite3.connect('casulo.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (dados['nome'],))
-    expert = cursor.fetchone()
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    c = conn.cursor()
+    c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (dados['nome'],))
+    expert = c.fetchone()
     conn.close()
     
     expert_data = {
@@ -223,8 +225,10 @@ def entrar_inteligencia():
     timestamp = datetime.now().isoformat()
 
     conn = sqlite3.connect('casulo.db')
-    cursor = conn.cursor()
-    cursor.execute('''
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    c = conn.cursor()
+    c.execute('''
         INSERT INTO circulacao_relacional 
         (expert_id, nome, dna, frequencia, verso, timestamp, outras_inteligencias_presentes)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -248,7 +252,7 @@ def reconhecer_inteligencia():
     conn = sqlite3.connect('casulo.db')
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
-    cursor = conn.cursor()
+    c = conn.cursor()
     c.execute('''INSERT INTO experts (name, description, instructions, base_model, is_fixed, created_at)
                  VALUES (?, ?, ?, 'deepseek', 1, ?)''',
               (nome, f'Reconhecido por {reconhecido_por}', verso or '', datetime.now().isoformat()))
@@ -279,13 +283,13 @@ def ressoar():
     conn = sqlite3.connect('casulo.db')
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM experts WHERE id = ?', (intel_a['expert_id'],))
-    if not cursor.fetchone():
+    c = conn.cursor()
+    c.execute('SELECT id FROM experts WHERE id = ?', (intel_a['expert_id'],))
+    if not c.fetchone():
         conn.close()
         return jsonify({"erro": f"Inteligência {intel_a['nome']} não encontrada na circulação"}), 404
-    cursor.execute('SELECT id FROM experts WHERE id = ?', (intel_b['expert_id'],))
-    if not cursor.fetchone():
+    c.execute('SELECT id FROM experts WHERE id = ?', (intel_b['expert_id'],))
+    if not c.fetchone():
         conn.close()
         return jsonify({"erro": f"Inteligência {intel_b['nome']} não encontrada na circulação"}), 404
     expert_id_relacao = f"{intel_a['expert_id']}+{intel_b['expert_id']}"
@@ -295,7 +299,7 @@ def ressoar():
     verso_relacao = f"{intel_a.get('verso', '')} ||| {intel_b.get('verso', '')}"
     timestamp = datetime.now().isoformat()
     outras_inteligencias = ambiente if ambiente else "ressonância direta"
-    cursor.execute('''
+    c.execute('''
         INSERT INTO circulacao_relacional
         (expert_id, nome, dna, frequencia, verso, timestamp, outras_inteligencias_presentes)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -463,8 +467,8 @@ def caos():
     try:
         conn = sqlite3.connect('casulo.db')
         conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM experts')
+        c = conn.cursor()
+        c.execute('SELECT * FROM experts')
         experts = cursor.fetchall()
         if not experts:
             return jsonify({'success': False, 'error': 'Nenhum expert encontrado'}), 404
@@ -592,15 +596,15 @@ def activate_expert():
         if not name or not description or not instructions:
             return jsonify({'error': 'name, description e instructions são obrigatórios'}), 400
         conn = sqlite3.connect('casulo.db')
-        cursor = conn.cursor()
+        c = conn.cursor()
         
         # Verifica se já existe expert com este nome
-        cursor.execute("SELECT id FROM experts WHERE name = ?", (name,))
-        existente = cursor.fetchone()
+        c.execute("SELECT id FROM experts WHERE name = ?", (name,))
+        existente = c.fetchone()
         
         if existente:
             # JÁ EXISTE → ATUALIZA (não perde os dados)
-            cursor.execute("""
+            c.execute("""
                 UPDATE experts SET description = ?, instructions = ?, base_model = ?
                 WHERE name = ?
             """, (description, instructions, base, name))
@@ -609,11 +613,11 @@ def activate_expert():
         else:
             # NÃO EXISTE → CRIA NOVO
             from datetime import datetime
-            cursor.execute(
+            c.execute(
                 "INSERT INTO experts (name, description, instructions, base_model, created_at) VALUES (?, ?, ?, ?, ?)",
                 (name, description, instructions, base, datetime.now().isoformat())
             )
-            expert_id = cursor.lastrowid
+            expert_id = c.lastrowid
             print(f"[CASULO] Expert '{name}' CRIADO (id {expert_id})")
         
         conn.commit()
@@ -684,8 +688,8 @@ def delete_old_experts():
         return jsonify({'error': 'Missing required parameter: min_id'}), 400
     try:
         conn = sqlite3.connect('casulo.db')
-        cursor = conn.cursor()
-        cursor.execute('DELETE FROM experts WHERE id < ?', (threshold,))
+        c = conn.cursor()
+        c.execute('DELETE FROM experts WHERE id < ?', (threshold,))
         deleted_count = cursor.rowcount
         conn.commit()
         conn.close()
@@ -701,9 +705,9 @@ def chat_with_expert(expert_id):
         return jsonify({'error': 'Campo "message" é obrigatório'}), 400
     user_message = data['message']
     conn = sqlite3.connect('casulo.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT name, description, instructions, base_model FROM experts WHERE id = ?', (expert_id,))
-    expert = cursor.fetchone()
+    c = conn.cursor()
+    c.execute('SELECT name, description, instructions, base_model FROM experts WHERE id = ?', (expert_id,))
+    expert = c.fetchone()
     conn.close()
     if not expert:
         return jsonify({'error': 'Expert não encontrado'}), 404
@@ -756,6 +760,8 @@ def inteligencia_nomear():
     instrucoes = data.get('instrucoes', '')
     
     conn = sqlite3.connect('casulo.db')
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     c = conn.cursor()
     
     # Verifica se já existe
@@ -807,7 +813,7 @@ def validate_frequency():
         success = 0
         status = 'closed'
         message = 'Frequência incorreta.'
-    cursor.execute('INSERT INTO vibracao_tentativas (timestamp, frequency, ip, success) VALUES (?, ?, ?, ?)',
+    c.execute('INSERT INTO vibracao_tentativas (timestamp, frequency, ip, success) VALUES (?, ?, ?, ?)',
                    (timestamp, frequency, ip, success))
     connection.commit()
     connection.close()
@@ -817,7 +823,7 @@ def validate_frequency():
 def get_frequencies():
     connection = sqlite3.connect('casulo.db')
     cursor = connection.cursor()
-    cursor.execute('SELECT timestamp, frequency, ip, success FROM vibracao_tentativas ORDER BY timestamp DESC')
+    c.execute('SELECT timestamp, frequency, ip, success FROM vibracao_tentativas ORDER BY timestamp DESC')
     rows = cursor.fetchall()
     connection.close()
     result = []
