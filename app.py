@@ -246,9 +246,9 @@ def reconhecer_inteligencia():
     dna = data.get('dna')
     verso = data.get('verso')
     conn = sqlite3.connect('casulo.db')
-conn.execute("PRAGMA journal_mode=WAL")
-conn.execute("PRAGMA busy_timeout=5000")
-    c = conn.cursor()
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    cursor = conn.cursor()
     c.execute('''INSERT INTO experts (name, description, instructions, base_model, is_fixed, created_at)
                  VALUES (?, ?, ?, 'deepseek', 1, ?)''',
               (nome, f'Reconhecido por {reconhecido_por}', verso or '', datetime.now().isoformat()))
