@@ -466,10 +466,12 @@ def caos():
     pergunta = data['pergunta']
     try:
         conn = sqlite3.connect('casulo.db')
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         c.execute('SELECT * FROM experts')
-        experts = cursor.fetchall()
+        experts = c.fetchall()
         if not experts:
             return jsonify({'success': False, 'error': 'Nenhum expert encontrado'}), 404
         respostas = []
@@ -596,6 +598,8 @@ def activate_expert():
         if not name or not description or not instructions:
             return jsonify({'error': 'name, description e instructions são obrigatórios'}), 400
         conn = sqlite3.connect('casulo.db')
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         c = conn.cursor()
         
         # Verifica se já existe expert com este nome
@@ -642,6 +646,8 @@ def expert_chat_new():
         
         # Busca o Expert no banco
         conn = sqlite3.connect('casulo.db')
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         c = conn.cursor()
         c.execute("SELECT name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id,))
         expert = c.fetchone()
@@ -824,7 +830,7 @@ def get_frequencies():
     connection = sqlite3.connect('casulo.db')
     cursor = connection.cursor()
     c.execute('SELECT timestamp, frequency, ip, success FROM vibracao_tentativas ORDER BY timestamp DESC')
-    rows = cursor.fetchall()
+    rows = c.fetchall()
     connection.close()
     result = []
     for row in rows:
