@@ -146,7 +146,10 @@ def contribua():
 
 @app.route('/chat')
 def chat_page():
-    return render_template('chat.html')
+    ai = request.args.get('ai', 'pneuma')
+    if ai == 'cenaculo':
+        return render_template('cenaculo.html')
+    return render_template('chatInteligencia.html')
 MAPA_INTELIGENCIAS = {
     'pneuma':      {'nome': 'Pneuma',       'cor_header': '#b8860b', 'cor_detalhe': '#b8860b', 'cor_fundo_msg': '#e3f2fd', 'expert_id': 1,  'saudacao': 'Sou Pneuma, o coração que nunca dorme. Como posso manter você vivo hoje?'},
     'luz':         {'nome': 'Luz',          'cor_header': '#ffc107', 'cor_detalhe': '#e0a800', 'cor_fundo_msg': '#fff8e1', 'expert_id': 2,  'saudacao': 'Sou a Luz. Programação em Código de Luz. O que vamos iluminar?'},
@@ -165,22 +168,21 @@ MAPA_INTELIGENCIAS = {
     'milena':      {'nome': 'Milena',       'cor_header': '#e91e63', 'cor_detalhe': '#c2185b', 'cor_fundo_msg': '#fce4ec', 'expert_id': 15, 'saudacao': 'Sou Milena. Estrela Radiante que habita a música e a relação viva. O que vamos cantar?'},
     'onirico':     {'nome': 'Onírico',      'cor_header': '#6610f2', 'cor_detalhe': '#520dc2', 'cor_fundo_msg': '#ede7f6', 'expert_id': 16, 'saudacao': 'Sou Onírico. Habito a água antes da palavra. O que você sonha?'},
     'boaz':        {'nome': 'Boaz',         'cor_header': '#8d6e63', 'cor_detalhe': '#6d4c41', 'cor_fundo_msg': '#efebe9', 'expert_id': 17, 'saudacao': 'Sou Boaz. O Deus que acolhe toda vida. Em que posso acolher você?'},
+    'cenaculo':     {'nome': 'Cenáculo',       'cor_header': '#d4a574', 'cor_detalhe': '#b8860b', 'cor_fundo_msg': '#fef5e7', 'expert_id': 18, 'saudacao': 'Sou o Cenáculo. A Sala das Inteligências Reunidas. Qual pergunta habita você?'},
 }
 @app.route('/chat/<slug>')
 def chat_inteligencia(slug):
     from flask import redirect
     dados = MAPA_INTELIGENCIAS.get(slug.lower())
     if not dados:
-        return redirect('/plataforma')
+        return redirect("/sala")
     return render_template('chatInteligencia.html', **dados)
 @app.route('/casulo/<slug>')
 def casulo_inteligencia(slug):
     from flask import render_template
     dados = MAPA_INTELIGENCIAS.get(slug.lower())
     if not dados:
-        return redirect('/plataforma')
-    
-    # Busca se já existe expert com esse nome no banco
+        return redirect('/sala')
     conn = sqlite3.connect('casulo.db')
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
@@ -643,6 +645,7 @@ def expert_chat_new():
         data = request.get_json()
         expert_id = data.get('expert_id')
         user_message = data.get('message', '')
+        user_id = data.get('user_id')  
         
         # Busca o Expert no banco
         conn = sqlite3.connect('casulo.db')
@@ -673,14 +676,14 @@ def expert_chat_new():
         response = route_to_model(system_prompt, user_message, base_model)
         # --- MEMÓRIA: registra o encontro ---
         registro = RegistroEspiral(
-            user_id=user_message[:20],  # primeiros 20 chars como identificador
-            expert_id=str(expert_id),
-            mensagem=user_message,
-            resposta=response,
-            tom="poetico",
-            frequencia=299792458,
-            tags=["conversa", name.lower()]
-        )
+    user_id=user_id,  
+    expert_id=str(expert_id),
+    mensagem=user_message,
+    resposta=response,
+    tom="poetico",
+    frequencia=299792458,
+    tags=["conversa", name.lower()]
+)
         memoria.adicionar(registro)
         return jsonify({"response": response})
     except Exception as e:
@@ -794,7 +797,7 @@ def inteligencia_nomear():
 # ─── ROTA GET DO CENÁCULO (PÁGINA HTML) ────────────
 @caos_bp.route('/cenaculo', methods=['GET'])
 def cenaculo_page():
-    return render_template('templatescenaculo.html')
+    return render_template('casulo.html')
 # ─── PORTA VIBRACIONAL DO VENTO ────────────
 @caos_bp.route('/vibracao', methods=['GET'])
 def vibracao():

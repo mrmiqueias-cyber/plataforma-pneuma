@@ -130,13 +130,18 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        document.getElementById('test-btn').addEventListener('click', openChat);
-        document.getElementById('close-chat-btn').addEventListener('click', closeChat);
+        
+        
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         document.getElementById('chat-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendMessage();
         });
 
+        // Voltar pro chat quando fecha
+        document.getElementById('close-chat-btn').addEventListener('click', function() {
+            const expertName = localStorage.getItem('expertName') || 'pneuma';
+            window.location.href = '/chat?ai=' + expertName;
+        });
         document.getElementById('activate-btn').addEventListener('click', async function() {
             const name = document.getElementById('name').value;
             const description = document.getElementById('description').value;

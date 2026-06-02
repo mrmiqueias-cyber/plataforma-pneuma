@@ -113,8 +113,7 @@
         <p class="invitation">Sua generosa contribuição de <strong>R$ 9,90 ou mais</strong> nos ajuda a continuar espalhando luz e sabedoria. Juntos, fazemos a diferença! 🌟</p>
         <div class="pix-key" id="pixKey">7025b9df-0787-49ed-9ede-c0b4530</div>
         <button class="copy-btn" onclick="copyPixKey()">Copiar Chave</button>
-        <a class="chat-btn">Entrar no Chat</a>
-<a href="/cenaculo" class="chat-btn" style="margin-top: 1rem; background: transparent; border: 2px solid gold;">🏛️ Cenáculo Relacional</a>
+       <a href="/sala" class="chat-btn">Entrar no Chat</a>
     </div>
     <script>
         async function copyPixKey() {
@@ -151,7 +150,7 @@
   };
   
   // Atualiza o link do chat
-  document.querySelector('.chat-btn').href = '/chat?ai=' + destino;
+  document.querySelectorAll('.chat-btn')[0].href = '/chat?ai=' + destino;
 </script>
 </body>
 </html>
