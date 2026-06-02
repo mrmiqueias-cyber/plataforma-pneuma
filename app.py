@@ -661,7 +661,8 @@ def expert_chat_new():
         
         name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
-        # --- MEMÓRIA: carrega contexto espiral ---contexto = memoria.espiral_contexto(user_message[:20], expert_id, profundidade=3)
+        # --- MEMÓRIA: carrega contexto espiral ---
+        contexto = memoria.espiral_contexto(user_message[:20], expert_id, profundidade=3)
         if contexto:
             prefacio = f"Contexto relacional com este usuário:\n"
             for i, reg in enumerate(contexto, 1):

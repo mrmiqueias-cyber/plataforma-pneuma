@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Casulo - Invocação de Experts</title>
-    <style>
+CTRL + G
+182    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #121212; color: #fff; font-family: Georgia, serif; min-height: 100vh; }
         .container { display: block; width: 100%; max-width: 1200px; margin: 0 auto; }
@@ -179,6 +180,15 @@ for (let i = 0; i < pdfInput.files.length; i++) {
                 console.error(e);
                 alert('Erro ao ativar Expert');
             }
+        document.getElementById('test-btn').addEventListener('click', function() {
+            const name = document.getElementById('name').value.trim();
+            const instructions = document.getElementById('instructions').value.trim();
+            if (!name || !instructions) {
+                alert('Por favor, preencha todos os campos obrigatórios (Nome e Instruções).');
+            } else {
+                openChat();
+            }
+        });
         });
     </script>
 </body>
