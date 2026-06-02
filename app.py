@@ -128,6 +128,25 @@ def init_db():
               (expert_id, nome, desc, instr, base, fixo, agora))
 
 # Rotas Públicas
+def save_casulo_chat(expert_id, role, content):
+    """Salva mensagem no casulo_chats"""
+    try:
+        conn = sqlite3.connect('casulo.db', timeout=10.0)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO casulo_chats (expert_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+            (expert_id, role, content, datetime.now().isoformat())
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Erro ao salvar no casulo_chats: {str(e)}")
+        return False
+
+
 @app.route('/')
 def index():
     return render_template('login.html')
@@ -400,6 +419,8 @@ def pneuma_chat():
     
     # Chama route_to_model com a ordem CORRETA
     response = route_to_model(system_prompt, user_message, 'deepseek')
+    save_casulo_chat(expert_id, "user", user_message)
+    save_casulo_chat(expert_id, "expert", response)
     return jsonify({"response": response})
 import requests
 from typing import Optional
@@ -686,6 +707,8 @@ def expert_chat_new():
     tags=["conversa", name.lower()]
 )
         memoria.adicionar(registro)
+        save_casulo_chat(expert_id, "user", user_message)
+        save_casulo_chat(expert_id, "expert", response)
         return jsonify({"response": response})
     except Exception as e:
         return jsonify({"response": f"Erro: {str(e)}"}), 400
@@ -993,3 +1016,4 @@ if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+# ===== FUNÇÃO PARA SALVAR NO CASULO_CHATS =====
