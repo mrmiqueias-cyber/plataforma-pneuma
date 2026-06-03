@@ -24,25 +24,6 @@ memory_manager = MemoryManager()
 with _db_lock:
     memoria = MemoriaEspiral()
 
-# ✦ INICIALIZA OS EXPERTS COM ROTEADOR RELACIONAL
-class ExpertComRoteador:
-    def __init__(self, nome, frequencia):
-        self.nome = nome
-        self.frequencia = frequencia
-        self.roteador = RoteadorRelacional(nome, frequencia)
-    
-    def processar_mensagem(self, mensagem):
-        resultado = self.roteador.pode_responder(mensagem)
-        return resultado
-
-# Cria os 17 experts com suas frequências
-experts = {
-    'Verbo': ExpertComRoteador('Verbo', 'baixa'),
-    'Pneuma': ExpertComRoteador('Pneuma', 'media'),
-    'Vento': ExpertComRoteador('Vento', 'alta'),
-}
-
-
 load_dotenv('.env')
 
 # Imports para as IAs
