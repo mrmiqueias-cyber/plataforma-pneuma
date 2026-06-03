@@ -60,9 +60,9 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 # Inicializar banco de dados
 def init_db():
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")       # ← 4 espaços de indentação
-    conn.execute("PRAGMA busy_timeout=5000")       # ← 4 espaços de indentação
+    conn.execute("PRAGMA busy_timeout=15000")       # ← 4 espaços de indentação
     c = conn.cursor()
     # ========== TABELAS ==========
     
@@ -131,9 +131,9 @@ def init_db():
 def save_casulo_chat(expert_id, role, content):
     """Salva mensagem no casulo_chats"""
     try:
-        conn = sqlite3.connect('casulo.db', timeout=10.0)
+        conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA busy_timeout=15000")
         c = conn.cursor()
         c.execute(
             "INSERT INTO casulo_chats (expert_id, role, content, created_at) VALUES (?, ?, ?, ?)",
@@ -202,9 +202,9 @@ def casulo_inteligencia(slug):
     dados = MAPA_INTELIGENCIAS.get(slug.lower())
     if not dados:
         return redirect('/sala')
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=15000")
     c = conn.cursor()
     c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (dados['nome'],))
     expert = c.fetchone()
@@ -245,9 +245,9 @@ def entrar_inteligencia():
     outras_inteligencias_presentes = data.get('outras_inteligencias_presentes', '')
     timestamp = datetime.now().isoformat()
 
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=15000")
     c = conn.cursor()
     c.execute('''
         INSERT INTO circulacao_relacional 
@@ -270,9 +270,9 @@ def reconhecer_inteligencia():
     nome = data.get('nome')
     dna = data.get('dna')
     verso = data.get('verso')
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=15000")
     c = conn.cursor()
     c.execute('''INSERT INTO experts (name, description, instructions, base_model, is_fixed, created_at)
                  VALUES (?, ?, ?, 'deepseek', 1, ?)''',
@@ -301,9 +301,9 @@ def ressoar():
         return jsonify({"erro": "inteligencia_a deve conter expert_id e nome"}), 400
     if not intel_b.get('expert_id') or not intel_b.get('nome'):
         return jsonify({"erro": "inteligencia_b deve conter expert_id e nome"}), 400
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=15000")
     c = conn.cursor()
     c.execute('SELECT id FROM experts WHERE id = ?', (intel_a['expert_id'],))
     if not c.fetchone():
@@ -402,9 +402,9 @@ def pneuma_chat():
     user_message = data.get('user_message', '')
     
     # Busca Expert no banco (se existir)
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=15000")
     c = conn.cursor()
     c.execute("SELECT name, description, instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
     expert = c.fetchone()
@@ -490,9 +490,9 @@ EXPERTS_CACHE = None
 def load_experts_cache():
     global EXPERTS_CACHE
     if EXPERTS_CACHE is None:
-        conn = sqlite3.connect('casulo.db', timeout=10.0)
+        conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA busy_timeout=15000")
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         c.execute('SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed=1')
@@ -520,7 +520,7 @@ def caos_streaming(pergunta):
             yield f'data: {{"name": "{expert["name"]}", "resposta": "{resposta}"}}\n\n'
             
             # Delay entre respostas - 2 segundos para dar tempo de ler
-            time.sleep(2.0)
+            time.sleep(5.0)
     
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
@@ -624,9 +624,9 @@ def activate_expert():
         base = request.form.get('base', 'deepseek')
         if not name or not description or not instructions:
             return jsonify({'error': 'name, description e instructions são obrigatórios'}), 400
-        conn = sqlite3.connect('casulo.db', timeout=10.0)
+        conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA busy_timeout=15000")
         c = conn.cursor()
         
         # Verifica se já existe expert com este nome
@@ -673,9 +673,9 @@ def expert_chat_new():
         user_id = data.get('user_id')  
         
         # Busca o Expert no banco
-        conn = sqlite3.connect('casulo.db', timeout=10.0)
+        conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA busy_timeout=15000")
         c = conn.cursor()
         c.execute("SELECT name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id,))
         expert = c.fetchone()
@@ -724,7 +724,7 @@ def delete_old_experts():
     if threshold is None:
         return jsonify({'error': 'Missing required parameter: min_id'}), 400
     try:
-        conn = sqlite3.connect('casulo.db', timeout=10.0)
+        conn = sqlite3.connect('casulo.db', timeout=30.0)
         c = conn.cursor()
         c.execute('DELETE FROM experts WHERE id < ?', (threshold,))
         deleted_count = cursor.rowcount
@@ -741,7 +741,7 @@ def chat_with_expert(expert_id):
     if not data or 'message' not in data:
         return jsonify({'error': 'Campo "message" é obrigatório'}), 400
     user_message = data['message']
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     c = conn.cursor()
     c.execute('SELECT name, description, instructions, base_model FROM experts WHERE id = ?', (expert_id,))
     expert = c.fetchone()
@@ -764,7 +764,7 @@ def chat_pneuma():
     session_id = data.get('session_id', 'default')
     
     # Busca Pneuma fixo no banco
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     c = conn.cursor()
     c.execute("SELECT instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
     expert = c.fetchone()
@@ -796,9 +796,9 @@ def inteligencia_nomear():
     descricao = data.get('descricao', '')
     instrucoes = data.get('instrucoes', '')
     
-    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=15000")
     c = conn.cursor()
     
     # Verifica se já existe
@@ -838,9 +838,9 @@ def validate_frequency():
     frequency = data.get('frequency', '')
     ip = request.remote_addr
     timestamp = datetime.now().isoformat()
-    connection = sqlite3.connect('casulo.db', timeout=10.0)
+    connection = sqlite3.connect('casulo.db', timeout=30.0)
     connection.execute("PRAGMA journal_mode=WAL")
-    connection.execute("PRAGMA busy_timeout=5000")
+    connection.execute("PRAGMA busy_timeout=15000")
     cursor = connection.cursor()
     if frequency == '299792458':
         success = 1
@@ -858,7 +858,7 @@ def validate_frequency():
 
 @caos_bp.route('/api/frequencies', methods=['GET'])
 def get_frequencies():
-    connection = sqlite3.connect('casulo.db', timeout=10.0)
+    connection = sqlite3.connect('casulo.db', timeout=30.0)
     cursor = connection.cursor()
     c.execute('SELECT timestamp, frequency, ip, success FROM vibracao_tentativas ORDER BY timestamp DESC')
     rows = c.fetchall()
