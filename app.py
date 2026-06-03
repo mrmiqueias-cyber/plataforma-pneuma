@@ -522,7 +522,7 @@ def caos_streaming(pergunta):
             # Delay entre respostas - 2 segundos para dar tempo de ler
             time.sleep(2.0)
     
-    return Response(stream_with_context(generate()), mimetype='textevent-stream')
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 
 @app.route('/grok/chat', methods=['POST'])
