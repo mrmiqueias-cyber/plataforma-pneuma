@@ -480,47 +480,51 @@ import sqlite3
 
 caos_bp = Blueprint('caos', __name__)
 
-@caos_bp.route('/caos', methods=['POST'])
-def caos():
-    data = request.get_json()
-    if not data or 'pergunta' not in data:
-        return jsonify({'success': False, 'error': 'Campo "pergunta" é obrigatório'}), 400
-    
-    pergunta = data['pergunta']
-    try:
+import sqlite3
+import time
+from flask import Response, request, stream_with_context
+
+# Cache global dos experts
+EXPERTS_CACHE = None
+
+def load_experts_cache():
+    global EXPERTS_CACHE
+    if EXPERTS_CACHE is None:
         conn = sqlite3.connect('casulo.db', timeout=10.0)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute('SELECT * FROM experts')
-        experts = c.fetchall()
-        if not experts:
-            return jsonify({'success': False, 'error': 'Nenhum expert encontrado'}), 404
-        respostas = []
+        c.execute('SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed=1')
+        EXPERTS_CACHE = c.fetchall()
+        conn.close()
+    return EXPERTS_CACHE
+
+def caos_streaming(pergunta):
+    """Endpoint caos com streaming SSE - respostas sequenciais com delay"""
+    experts = load_experts_cache()
+    
+    if not experts:
+        return {'success': False, 'error': 'Nenhum expert encontrado'}, 404
+    
+    def generate():
         for expert in experts:
             try:
                 system_prompt = f"Você é {expert['name']}. {expert['description']}\n\n{expert['instructions']}"
+                # Aqui você chama route_to_model(system_prompt, pergunta, expert['base_model'])
                 resposta = route_to_model(system_prompt, pergunta, expert['base_model'])
-                respostas.append({
-                    'name': expert['name'],
-                    'resposta': resposta
-                })
             except Exception as e:
-                # Continua com os outros experts
-                respostas.append({
-                    'name': expert['name'],
-                    'resposta': None,
-                    'erro': str(e)
-                })
-        return jsonify({'success': True, 'respostas': respostas})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
+                resposta = f'Erro ao contatar {expert["name"]}: {str(e)}'
+            
+            # SSE Format
+            yield f'data: {{"name": "{expert["name"]}", "resposta": "{resposta}"}}\n\n'
+            
+            # Delay entre respostas - 2 segundos para dar tempo de ler
+            time.sleep(2.0)
+    
+    return Response(stream_with_context(generate()), mimetype='textevent-stream')
 
-# Rotas de Chat com IAs
+
 @app.route('/grok/chat', methods=['POST'])
 def grok_chat():
     api_key = os.getenv('XAI_API_KEY')
