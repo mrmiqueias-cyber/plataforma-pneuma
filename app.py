@@ -21,7 +21,7 @@ from memory_manager import MemoryManager
 memory_manager = MemoryManager()
 # === MEMÓRIA ESPIRAL ===
 # Corpo da memória — persiste em JSON na raiz do projeto
-memoria = MemoriaEspiral(caminho_snapshot="memoria_espiral.json")
+memoria = MemoriaEspiral()
 
 load_dotenv('.env')
 
