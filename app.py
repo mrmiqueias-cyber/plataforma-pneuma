@@ -582,7 +582,7 @@ def claude_chat():
 
 @app.route('/llama/chat', methods=['POST'])
 def llama_chat():
-    ollama_url = os.getenv('OLLAMA_URL', 'http://localhost:11434')
+    ollama_url = os.getenv('OLLAMA_URL', 'http://0.0.0.0:11434')
     
     try:
         data = request.get_json()
@@ -655,7 +655,7 @@ def activate_expert():
         conn.close()
         
         try:
-            requests.post('http://localhost:5000/inteligencia/entrar', json={'expert_id': expert_id, 'nome': name})
+            requests.post('http://0.0.0.0:10000/inteligencia/entrar', json={'expert_id': expert_id, 'nome': name})
         except Exception as e:
             print(f"Erro ao chamar /inteligencia/entrar: {e}")
         
