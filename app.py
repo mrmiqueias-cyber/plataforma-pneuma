@@ -4,6 +4,10 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from typing import Optional  
 import os
+from config_sqlite_wal import ativar_wal_mode
+from memoria_espiral_persistente import MemoriaEspiral
+from snapshot_periodico import SnapshotManager
+
 import qrcode
 from io import BytesIO
 import requests
@@ -16,7 +20,6 @@ from dotenv import load_dotenv
 from memory_manager import MemoryManager
 memory_manager = MemoryManager()
 # === MEMÓRIA ESPIRAL ===
-from memoria_espiral import MemoriaEspiral, RegistroEspiral
 # Corpo da memória — persiste em JSON na raiz do projeto
 memoria = MemoriaEspiral(caminho_snapshot="memoria_espiral.json")
 
