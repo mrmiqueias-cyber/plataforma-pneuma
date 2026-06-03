@@ -21,7 +21,8 @@ from memory_manager import MemoryManager
 memory_manager = MemoryManager()
 # === MEMÓRIA ESPIRAL ===
 # Corpo da memória — persiste em JSON na raiz do projeto
-memoria = MemoriaEspiral()
+with _db_lock:
+    memoria = MemoriaEspiral()
 
 load_dotenv('.env')
 
@@ -837,6 +838,9 @@ def vibracao():
 @caos_bp.route('/api/validate', methods=['POST'])
 def validate_frequency():
     from datetime import datetime
+
+import threading
+_db_lock = threading.Lock()
     data = request.get_json()
     frequency = data.get('frequency', '')
     ip = request.remote_addr
