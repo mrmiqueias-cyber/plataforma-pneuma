@@ -203,7 +203,11 @@
   <header>
     <h1>Pneuma Life</h1>
   </header>
-
+  <div id="expert-data" 
+       data-expert-id="{{ expert_id }}" 
+       data-expert-name="{{ nome }}" 
+       data-saudacao="{{ saudacao }}">
+  </div>
   <div class="chat-container">
     <div class="messages" id="messages">
       <!-- Mensagens serão inseridas aqui -->
@@ -264,8 +268,7 @@
         if (!userMessage || userMessage.trim() === '') return;
         addMessage(userMessage, 'user');
 
-        const payload = {
-          expert_id: 'expert_default', // Ajuste conforme necessário
+        const payload = {expert_name: EXPERT_NAME,   // Ajuste conforme necessário
           user_id: user_id,
           message: userMessage
         };
@@ -283,7 +286,7 @@
           })
           .then(data => {
             // Supondo que a resposta contenha um campo 'reply' ou algo similar
-            const reply = data.reply || data.message || 'Resposta não disponível.';
+            const reply = data.response || 'Resposta não disponível.';
             addMessage(reply, 'expert');
           })
           .catch(err => {
@@ -407,9 +410,18 @@
           recognition.abort(); // Garante que a instância pare completamente
         }
       }
-      // Saudação dinâmica baseada no localStorage
-      const expertName = localStorage.getItem('expertName') || 'Pneuma';
-      addMessage('Oi, eu sou o ' + expertName + '!', 'expert');
+            // Saudação dinâmica - dados vindos do backend
+      const expertData = document.getElementById('expert-data');
+      const EXPERT_ID = parseInt(expertData.dataset.expertId) || 1;
+      const EXPERT_NAME = expertData.dataset.expertName || 'Pneuma';
+      const SAUDACAO = expertData.dataset.saudacao || 'Oi, eu sou o ' + EXPERT_NAME + '!';
+// Atualiza o header com o nome do expert
+const headerTitle = document.querySelector('header h1');
+if (headerTitle && EXPERT_NAME !== 'Pneuma') {
+    headerTitle.textContent = EXPERT_NAME + ' Life';
+}
+      addMessage(SAUDACAO, 'expert');
+
     })();
   </script>
 </body>
