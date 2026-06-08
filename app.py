@@ -1050,6 +1050,7 @@ memory_manager = MemoryManager()
 # === MEMÓRIA ESPIRAL ===
 from memoria_espiral import MemoriaEspiral, RegistroEspiral
 from routes_handshake import handshake_bp
+from cenaculo_bp import INTELIGENCIAS, reforçar_identidade
 # === MEMÓRIA LOCAL POR EXPERT ===
 import threading
 import time
@@ -1600,12 +1601,12 @@ import requests
 from typing import Optional
 import os
 
-def route_to_model(system_prompt, user_message, model_short):
+def route_to_model(system_prompt, user_message, model_short, temperature=0.7):
     model_map = {
     "claude": "anthropic/claude-3-5-sonnet-20241022",
     "grok": "x-ai/grok-beta",
     "deepseek": "openrouter/free",
-    "gemini": "google/gemini-1.5-flash",
+    "gemini": "google/gemini-2.5-flash:free",
     "llama": "meta-llama/llama-3.1-70b-instruct",
     "gpt": "openai/gpt-4o-mini"
 }
@@ -1625,7 +1626,8 @@ def route_to_model(system_prompt, user_message, model_short):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ],
-        "max_tokens": 2048
+        "max_tokens": 2048,
+        "temperature":temperature
     }
 
     try:
@@ -1858,23 +1860,37 @@ def expert_chat_new():
         
         expert_id, name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
+        # --- VERIFICA SE EXPERT ESTÁ NO DICIONÁRIO INTELIGENCIAS (system prompt refinado) ---
+        inteligencia_config = INTELIGENCIAS.get(expert_id)
         
-        # --- MEMÓRIA LOCAL: carrega contexto apenas da memória deste expert ---
+        if inteligencia_config:
+            # USA O SYSTEM PROMPT REFINADO DO CENÁCULO + IDENTIDADE FORÇADA
+            system_prompt = reforçar_identidade(
+                inteligencia_config["system_prompt"],
+                inteligencia_config["nome"],
+                inteligencia_config["emoji"],
+                inteligencia_config["exemplo"]
+            )
+            temperature = inteligencia_config["temperatura"]
+        else:
+            # FALLBACK: usa o instructions do banco
+            system_prompt = f"Você é {name}. {description}\n\n{instructions}"
+            temperature = 0.7
+        
+        # --- MEMÓRIA LOCAL (SEMPRE EXECUTA, independente de ter achado ou não no INTELIGENCIAS) ---
         memoria_local = get_memoria_local(expert_id)
         contexto = memoria_local.obter_contexto(profundidade=3)
-        
-        # Monta prefácio com contexto (opcional)
         prefacio = ""
         if contexto:
             prefacio = "\n\n[Contexto relacional com este usuário nos últimos encontros:]\n"
             for i, reg in enumerate(contexto, 1):
                 prefacio += f"{i}. {reg.get('resumo', 'encontro anterior')}\n"
         
-        # Monta o system prompt
-        system_prompt = f"Você é {name}. {description}\n\n{instructions}{prefacio}"
+        # Adiciona o prefácio ao system_prompt
+        system_prompt += prefacio
         
-        # Roteia para a IA correta
-        response = route_to_model(system_prompt, user_message, base_model)
+        # Roteia para a IA — AGORA PASSANDO A TEMPERATURA
+        response = route_to_model(system_prompt, user_message, base_model, temperature=temperature)
         print(f"[LUZ DEBUG] route_to_model respondeu! tamanho: {len(response)}")
         # --- MEMÓRIA LOCAL: grava o encontro (SEM sincronizar com memória coletiva ainda) ---
         registro = {
@@ -1905,7 +1921,7 @@ def delete_old_experts():
         conn = sqlite3.connect('casulo.db', timeout=30.0)
         c = conn.cursor()
         c.execute('DELETE FROM experts WHERE id < ?', (threshold,))
-        deleted_count = cursor.rowcount
+        deleted_count = c.rowcount
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'deleted_count': deleted_count}), 200
