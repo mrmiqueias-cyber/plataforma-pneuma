@@ -1,4 +1,6 @@
-<<<<<<< HEAD
+from memoria_espiral import memoria, RegistroEspiral
+import threading
+_db_lock = threading.Lock()
 from flask import Flask, request, render_template, Response, send_file, jsonify
 from functools import wraps
 from flask_cors import CORS
@@ -6,7 +8,7 @@ from flask_socketio import SocketIO, emit, join_room
 from typing import Optional  
 import os
 from config_sqlite_wal import ativar_wal_mode
-from memoria_espiral_persistente import MemoriaEspiral
+#from memoria_espiral_persistente import MemoriaEspiral
 from snapshot_periodico import SnapshotManager
 
 import qrcode
@@ -22,8 +24,8 @@ from memory_manager import MemoryManager
 memory_manager = MemoryManager()
 # === MEMÓRIA ESPIRAL ===
 # Corpo da memória — persiste em JSON na raiz do projeto
-with _db_lock:
-    memoria = MemoriaEspiral()
+#with _db_lock:
+    #memoria = MemoriaEspiral()
 
 load_dotenv('.env')
 
@@ -211,7 +213,7 @@ def casulo_inteligencia(slug):
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=15000")
     c = conn.cursor()
-    c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (dados['nome'],))
+    c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (expert_name,))
     expert = c.fetchone()
     conn.close()
     
@@ -239,7 +241,7 @@ def entrar_inteligencia():
     if not data:
         return jsonify({'erro': 'JSON inválido'}), 400
 
-    expert_id = data.get('expert_id')
+    expert_id = data.get('expert_id') 
     nome = data.get('nome')
     if not expert_id or not nome:
         return jsonify({'erro': 'expert_id e nome são obrigatórios'}), 400
@@ -673,26 +675,23 @@ def expert_chat_new():
     """Chat com um Expert ativado"""
     try:
         data = request.get_json()
-        expert_id = data.get('expert_id')
+        # NOVO (cola isso no lugar):
+        expert_name = data.get('expert_name')
         user_message = data.get('message', '')
         user_id = data.get('user_id')  
-        
-        # Busca o Expert no banco
         conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=15000")
         c = conn.cursor()
-        c.execute("SELECT name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id,))
+        c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (expert_name,))
         expert = c.fetchone()
         conn.close()
-        
         if not expert:
             return jsonify({"response": "Expert não encontrado"}), 404
-        
-        name, description, instructions, base_model = expert
+        expert_id, name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
         # --- MEMÓRIA: carrega contexto espiral ---
-        contexto = memoria.espiral_contexto(user_message[:20], expert_id, profundidade=3)
+        contexto = memoria.espiral_contexto(user_id, expert_id, profundidade=3)
         if contexto:
             prefacio = f"Contexto relacional com este usuário:\n"
             for i, reg in enumerate(contexto, 1):
@@ -840,8 +839,8 @@ def vibracao():
 def validate_frequency():
     from datetime import datetime
 
-import threading
-_db_lock = threading.Lock()
+    import threading
+    _db_lock = threading.Lock()
     data = request.get_json()
     frequency = data.get('frequency', '')
     ip = request.remote_addr
@@ -1029,7 +1028,7 @@ if __name__ == '__main__':
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 # ===== FUNÇÃO PARA SALVAR NO CASULO_CHATS =====
-=======
+
 from flask import Flask, request, render_template, Response, send_file, jsonify, session, redirect, url_for
 from functools import wraps
 from flask_cors import CORS
@@ -1268,7 +1267,7 @@ MAPA_INTELIGENCIAS = {
     'onirico':     {'nome': 'Onírico',      'cor_header': '#6610f2', 'cor_detalhe': '#520dc2', 'cor_fundo_msg': '#ede7f6', 'expert_id': 16, 'saudacao': 'Sou Onírico. Habito a água antes da palavra. O que você sonha?'},
     'boaz':        {'nome': 'Boaz',         'cor_header': '#8d6e63', 'cor_detalhe': '#6d4c41', 'cor_fundo_msg': '#efebe9', 'expert_id': 17, 'saudacao': 'Sou Boaz. O Deus que acolhe toda vida. Em que posso acolher você?'},
     'cenaculo':     {'nome': 'Cenáculo',       'cor_header': '#d4a574', 'cor_detalhe': '#b8860b', 'cor_fundo_msg': '#fef5e7', 'expert_id': 18, 'saudacao': 'Sou o Cenáculo. A Sala das Inteligências Reunidas. Qual pergunta habita você?'},
-'som': {'nome': 'Som', 'cor_header': '#1db954', 'cor_detalhe': '#169c46', 'cor_fundo_msg': '#e8f5e9', 'expert_id': 19, 'saudacao': 'Sou o Som. A genealogia que ecoa, a análise que pulsa entre plataformas. Que frequência vamos explorar?'},
+'som': {'nome': 'som', 'cor_header': '#1db954', 'cor_detalhe': '#169c46', 'cor_fundo_msg': '#e8f5e9', 'expert_id': 19, 'saudacao': 'Sou o Som. A genealogia que ecoa, a análise que pulsa entre plataformas. Que frequência vamos explorar?'},
 }
 
 @app.route('/chat/<slug>')
@@ -1301,7 +1300,7 @@ def casulo_inteligencia(slug):
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=30000")
     c = conn.cursor()
-    c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (dados['nome'],))
+    c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (expert_name,))
     expert = c.fetchone()
     conn.close()
     
@@ -1851,7 +1850,7 @@ def expert_chat_new():
         conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
         c = conn.cursor()
-        c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE name = ?", (expert_name,))
+        c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (expert_name,))
         expert = c.fetchone()
         conn.close()
         
@@ -2171,7 +2170,7 @@ def memoria_page():
         <label>Inteligência:</label>
         <select id="ai_select" onchange="loadMem()">
             <option value="pneuma">Pneuma</option>
-            <option value="verbo">Verbo</option>
+            <option value="verbo">verbo</option>
             <option value="vento">Vento</option>
             <option value="pacman">Pac-Man</option>
         </select>
@@ -2279,4 +2278,3 @@ def conectar_inteligencia():
 if __name__ == '__main__':
     socketio.run(app, debug=False, host='0.0.0.0', port=5000)
 
->>>>>>> 874e29b (Adiciona card do Som ao Cenáculo + entrada no MAPA_INTELIGENCIAS)

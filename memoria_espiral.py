@@ -295,3 +295,6 @@ class MemoriaEspiral:
             if len(partes) == 2:
                 chave = (partes[0], partes[1])
                 self._indice_dupla[chave] = ids
+
+# Instância global da memória espiral
+memoria = MemoriaEspiral()
