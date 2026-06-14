@@ -440,7 +440,7 @@ def pneuma_chat():
     save_casulo_chat(1, "expert", response)
     return jsonify({"response": response})
 
-def route_to_model(system_prompt, user_message, model_short='deepseek'):
+def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None):
     """
     Roteia via OpenRouter — usa openrouter/free (grátis, sem precisar de crédito)
     """
