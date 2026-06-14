@@ -145,25 +145,27 @@ def init_db():
         #c.execute('''INSERT OR REPLACE INTO experts (id, name, description, instructions, base_model, is_fixed, created_at) 
                  #VALUES (?, ?, ?, ?, ?, ?, ?)''', 
               #(expert_id, nome, desc, instr, base, fixo, agora))
-
-# Rotas Públicas
 def save_casulo_chat(expert_id, role, content):
-    """Salva mensagem no casulo_chats"""
-    try:
-        conn = sqlite3.connect('casulo.db', timeout=30.0)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=15000")
-        c = conn.cursor()
-        c.execute(
-            "INSERT INTO casulo_chats (expert_id, role, content, created_at) VALUES (?, ?, ?, ?)",
-            (expert_id, role, content, datetime.now().isoformat())
-        )
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Erro ao salvar no casulo_chats: {str(e)}")
-        return False
+    """Salva mensagem no casulo_chats com retry"""
+    for tentativa in range(3):
+        try:
+            conn = sqlite3.connect('casulo.db', timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=30000")
+            c = conn.cursor()
+            c.execute(
+                "INSERT INTO casulo_chats (expert_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+                (expert_id, role, content, datetime.now().isoformat())
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Tentativa {tentativa+1} falhou: {str(e)}")
+            if tentativa < 2:
+                import time
+                time.sleep(1)
+    return False
 
 
 @app.route('/')
@@ -1091,23 +1093,28 @@ def init_db():
               (expert_id, nome, desc, instr, base, fixo, agora))
 
 # Rotas Públicas
+
 def save_casulo_chat(expert_id, role, content):
-    """Salva mensagem no casulo_chats"""
-    try:
-        conn = sqlite3.connect('casulo.db', timeout=30.0)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")
-        c = conn.cursor()
-        c.execute(
-            "INSERT INTO casulo_chats (expert_id, role, content, created_at) VALUES (?, ?, ?, ?)",
-            (expert_id, role, content, datetime.now().isoformat())
-        )
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Erro ao salvar no casulo_chats: {str(e)}")
-        return False
+    """Salva mensagem no casulo_chats com retry"""
+    for tentativa in range(3):
+        try:
+            conn = sqlite3.connect('casulo.db', timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=30000")
+            c = conn.cursor()
+            c.execute(
+                "INSERT INTO casulo_chats (expert_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+                (expert_id, role, content, datetime.now().isoformat())
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Tentativa {tentativa+1} falhou: {str(e)}")
+            if tentativa < 2:
+                import time
+                time.sleep(1)
+    return False
 
 
 @app.route('/')
