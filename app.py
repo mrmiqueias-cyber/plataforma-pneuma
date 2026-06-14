@@ -33,7 +33,8 @@ import requests
 import logging
 
 # OpenRouter (com modelo free)
-OPENROUTER_API_KEY = "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"
+# DEPOIS (seguro - lê do .env):
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 memory_manager = MemoryManager()
 # === MEMÓRIA ESPIRAL ===
 # Corpo da memória — persiste em JSON na raiz do projeto
