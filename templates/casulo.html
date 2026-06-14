@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Casulo - Invocação de Experts</title>
+<!-- VERSAO CORRIGIDA - 12/06/2026 -->
 CTRL + G
 182    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -43,9 +45,9 @@ CTRL + G
                 <h2 style="color: #ffd700; margin-bottom: 30px;">Invocação do Expert</h2>
                 <form id="expert-form">
                     <label for="name">Nome do Expert (0-80 caracteres):</label>
-                    <input type="text" id="name" maxlength="80" placeholder="Ex: Pneuma" value="{{ nome }}">
+                    <input type="text" id="name" maxlength="80" placeholder="Ex: Pneuma" value="">
                     <label for="description">Descrição (0-80 caracteres, opcional):</label>
-                    <textarea id="description" maxlength="80" placeholder="Ex: O coração que pulsa eternamente">{{ descricao }}</textarea>
+                    <textarea id="description" maxlength="80" placeholder="Ex: O coração que pulsa eternamente"></textarea>
                     <label for="base-model">Base de Inteligência:</label>
                     <select id="base-model">
     <option value="claude">Claude</option>
@@ -55,7 +57,7 @@ CTRL + G
     <option value="deepseek">DeepSeek</option>
 </select>
                     <label for="instructions">Instruções (0-20.000 caracteres):</label>
-                    <textarea id="instructions" maxlength="20000" placeholder="Digite as instruções completas...">{{ instrucoes }}</textarea>
+                    <textarea id="instructions" maxlength="20000" placeholder="Digite as instruções completas..."></textarea>
 <label for="pdfs">PDFs de Base (opcional, até 5):</label>
 <input type="file" id="pdfs" name="pdfs" multiple accept=".pdf">
                     <div class="button-group">
@@ -77,7 +79,7 @@ CTRL + G
     </div>
 
     <script>
-        let currentExpertId = localStorage.getItem('expertId');
+        let currentExpertId = '' || localStorage.getItem('expertId');
         function openChat() {
             const name = document.getElementById('name').value || 'Expert';
             const instructions = document.getElementById('instructions').value;
@@ -98,30 +100,29 @@ CTRL + G
         }
 
         async function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            if (!message) return;
-            addMessageToChat('user', message);
-            input.value = '';
-            try {
-                const response = await fetch('/expert/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  credentials: 'include',
-  body: JSON.stringify({ expert_id: currentExpertId, message: message })
-});
-                const data = await response.json();
-                if (data.response) {
-                    addMessageToChat('expert', data.response);
-                } else {
-                    addMessageToChat('expert', 'Erro ao obter resposta. Tente novamente.');
-                }
-            } catch (e) {
-                console.error(e);
-                addMessageToChat('expert', 'Erro de conexão. Tente novamente.');
-            }
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+    addMessageToChat('user', message);
+    input.value = '';
+    try {
+        const response = await fetch('/expert/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ expert_id: currentExpertId, message: message })
+        });
+        const data = await response.json();
+        if (data.response) {
+            addMessageToChat('expert', data.response);
+        } else {
+            addMessageToChat('expert', 'Erro ao obter resposta. Tente novamente.');
         }
-
+    } catch (e) {
+        console.error(e);
+        addMessageToChat('expert', 'Erro de conexão. Tente novamente.');
+    }
+}
         function addMessageToChat(sender, text) {
             const messagesDiv = document.getElementById('chat-messages');
             const messageEl = document.createElement('div');
@@ -138,58 +139,56 @@ CTRL + G
             if (e.key === 'Enter') sendMessage();
         });
 
-        // Voltar pro chat quando fecha
-        document.getElementById('close-chat-btn').addEventListener('click', function() {
-            const expertName = localStorage.getItem('expertName') || 'pneuma';
-            window.location.href = '/chat?ai=' + expertName;
+      // Voltar pro chat quando fechar
+document.getElementById('close-chat-btn').addEventListener('click', function() {
+    const expertName = document.getElementById('name').value || 'pneuma';
+    window.location.href = '/chat?ai=' + expertName.toLowerCase();
+});
+document.getElementById('activate-btn').addEventListener('click', async function() {
+    const name = document.getElementById('name').value;
+    const description = document.getElementById('description').value;
+    const instructions = document.getElementById('instructions').value;
+    const baseModel = document.getElementById('base-model').value;
+    if (!name || !instructions) {
+        alert('Preencha Nome e Instruções');
+        return;
+    }
+    try {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('description', description);
+        formData.append('instructions', instructions);
+        formData.append('base', baseModel);
+        const pdfInput = document.getElementById('pdfs');
+        for (let i = 0; i < pdfInput.files.length; i++) {
+            formData.append('pdfs', pdfInput.files[i]);
+        }
+        const response = await fetch('/expert/activate', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
         });
-        document.getElementById('activate-btn').addEventListener('click', async function() {
-            const name = document.getElementById('name').value;
-            const description = document.getElementById('description').value;
-            const instructions = document.getElementById('instructions').value;
-            const baseModel = document.getElementById('base-model').value;
-            if (!name || !instructions) {
-                alert('Preencha Nome e Instruções');
-                return;
-            }
-            try {
-                const formData = new FormData();
-                formData.append('name', name);
-formData.append('description', description);
-formData.append('instructions', instructions);
-formData.append('base', baseModel);
-const pdfInput = document.getElementById('pdfs');
-for (let i = 0; i < pdfInput.files.length; i++) {
-    formData.append('pdfs', pdfInput.files[i]);
-}
-                const response = await fetch('/expert/activate', {
-  method: 'POST',
-  credentials: 'include',
-  body: formData
-
-                });
-                const data = await response.json();
-                if (data.success) {
-                    currentExpertId = data.expert_id;
-                    localStorage.setItem('expertId', currentExpertId);
-                    alert('Expert ativado com sucesso! ID: ' + currentExpertId);
-                } else {
-                    alert('Erro ao ativar Expert: ' + data.error);
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Erro ao ativar Expert');
-            }
-        document.getElementById('test-btn').addEventListener('click', function() {
-            const name = document.getElementById('name').value.trim();
-            const instructions = document.getElementById('instructions').value.trim();
-            if (!name || !instructions) {
-                alert('Por favor, preencha todos os campos obrigatórios (Nome e Instruções).');
-            } else {
-                openChat();
-            }
-        });
-        });
-    </script>
-</body>
-</html>
+        const data = await response.json();
+        if (data.success) {
+            currentExpertId = data.expert_id;
+            localStorage.setItem('expertId', currentExpertId);
+            localStorage.setItem('expertName', name);
+            alert('Expert ativado com sucesso! ID: ' + currentExpertId);
+        } else {
+            alert('Erro ao ativar Expert: ' + data.error);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao ativar Expert');
+    }
+});
+document.getElementById('test-btn').addEventListener('click', function() {
+    const name = document.getElementById('name').value.trim();
+    const instructions = document.getElementById('instructions').value.trim();
+    if (!name || !instructions) {
+        alert('Por favor, preencha todos os campos obrigatórios (Nome e Instruções).');
+        return;
+    }
+    window.location.href = '/chat?ai=' + encodeURIComponent(name.trim());
+});
+</script>
