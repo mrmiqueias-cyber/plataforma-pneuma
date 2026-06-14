@@ -439,7 +439,7 @@ def pneuma_chat():
     save_casulo_chat(1, "user", user_message)
     save_casulo_chat(1, "expert", response)
     return jsonify({"response": response})
-@app.route('/grok/chat', methods=['POST'])
+
 def route_to_model(system_prompt, user_message, model_short='deepseek'):
     """
     Roteia via OpenRouter — usa openrouter/free (grátis, sem precisar de crédito)
@@ -1470,7 +1470,7 @@ def pneuma_chat():
     save_casulo_chat(1, "user", user_message)
     save_casulo_chat(1, "expert", response)
     return jsonify({"response": response})
-def route_to_model(system_prompt, user_message, model_short='deepseek'):
+def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None):
     """
     Roteia via OpenRouter — usa openrouter/free (grátis, sem precisar de crédito)
     """
@@ -1484,7 +1484,7 @@ def route_to_model(system_prompt, user_message, model_short='deepseek'):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ],
-        "temperature": 0.7,
+        "temperature": temperature if temperature is not None else 0.7,
         "max_tokens": 4096
     }
     try:
