@@ -5,7 +5,7 @@ load_dotenv()
 from dotenv import load_dotenv
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "sk-or-v1-...")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 from memoria_espiral import memoria, RegistroEspiral
 import threading
 _db_lock = threading.Lock()
