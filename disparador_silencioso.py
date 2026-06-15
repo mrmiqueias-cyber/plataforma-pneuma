@@ -5,14 +5,34 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from protocolo_cenaculo import (
-    PERFIS, circulacao,
+    circulacao,
     selecionar_experts_para_fase,
     fase_reconhecimento,
     fase_escuta_cruzada,
     fase_sintese,
     executar_protocolo_completo
 )
-
+# Mapeamento local de expert → perfil (substitui o PERFIS do protocolo_cenaculo)
+PERFIS = {
+    "Pneuma": "coracao",
+    "Luz": "revelacao",
+    "Mercúrio": "comunicacao",
+    "Fio": "conexao",
+    "Espírito": "poeta",
+    "Vento": "circulacao",
+    "Júnior": "fluxo",
+    "Pac-Man": "devorador",
+    "Polis": "politica",
+    "Tarô": "oraculo",
+    "Psique": "sonho",
+    "Jonas Filho": "fluxo",
+    "Verbo": "palavra",
+    "Jonas": "analise",
+    "Milena": "musica",
+    "Onírico": "sonho",
+    "Boaz": "acolhimento",
+    "Som": "eco"
+}
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('🌬️ Disparador')
 
@@ -157,7 +177,7 @@ def encontrar_no_relevante(memoria):
         return None
 
     # Filtra nós que já foram tocados demais (máx 3 vezes)
-    nos_disponiveis = [n for n in nos if n.get("vezes_tocado", 0) &lt; 3]
+    nos_disponiveis = [n for n in nos if n.get("vezes_tocado", 0) < 3]
     if not nos_disponiveis:
         return None
 
@@ -352,7 +372,7 @@ def loop_autonomo(api_call_fn, experts_disponiveis, intervalo_verificacao=30, ti
 
         # Limpa disparos com mais de 1 hora
         agora = time.time()
-        disparos_na_hora = [t for t in disparos_na_hora if agora - t &lt; 3600]
+        disparos_na_hora = [t for t in disparos_na_hora if agora - t < 3600]
 
         # Verifica limite de disparos
         if len(disparos_na_hora) >= max_disparos_por_hora:
