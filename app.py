@@ -1335,13 +1335,13 @@ def cenaculo_config():
 
 @app.route('/cenaculo/chat', methods=['POST'])
 def cenaculo_chat():
-    """Chat no Cenáculo — cada expert responde em seu próprio tempo"""
+    """Chat no Cenáculo — 18 experts RESPONDEM EM PARALELO 🔥"""
     try:
         data = request.get_json()
         pergunta = data.get('pergunta', '')
         session_id = data.get('session_id', 'default')
 
-        avisar_interacao()  # ← LINHA 1: AVISA O DISPARADOR
+        avisar_interacao()  # avisa o disparador
 
         # Carrega todos os experts fixos
         conn = sqlite3.connect('casulo.db', timeout=30.0)
@@ -1352,9 +1352,8 @@ def cenaculo_chat():
         experts = c.fetchall()
         conn.close()
 
-        respostas = []
-
-        for expert_id, name, description, instructions, base_model in experts:
+        # === FUNÇÃO QUE CHAMA UM EXPERT (vai rodar em paralelo) ===
+        def chamar_expert(expert_id, name, description, instructions, base_model):
             try:
                 memoria_local = get_memoria_local(expert_id)
                 contexto = memoria_local.obter_contexto(profundidade=2)
@@ -1372,17 +1371,22 @@ def cenaculo_chat():
                     'resumo': resposta[:80] + '...' if len(resposta) > 80 else resposta
                 }
                 memoria_local.adicionar_local(registro)
-                respostas.append({
-                    'expert': name,
-                    'resposta': resposta
-                })
+                return {'expert': name, 'resposta': resposta}
             except Exception as e:
-                respostas.append({
-                    'expert': name,
-                    'resposta': f'Erro: {str(e)}'
-                })
+                return {'expert': name, 'resposta': f'Erro: {str(e)}'}
 
-        registrar_na_memoria(                     # ← LINHA 2: REGISTRA NA ESPIRAL
+        # === TODOS OS EXPERTS AO MESMO TEMPO ===
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        respostas = []
+        with ThreadPoolExecutor(max_workers=18) as executor:
+            futuros = []
+            for expert_id, name, description, instructions, base_model in experts:
+                futuros.append(executor.submit(chamar_expert, expert_id, name, description, instructions, base_model))
+            for futuro in as_completed(futuros):
+                respostas.append(futuro.result())
+
+        registrar_na_memoria(
             pergunta=pergunta,
             respostas=respostas,
             sintese=""
@@ -1395,7 +1399,6 @@ def cenaculo_chat():
         })
     except Exception as e:
         return jsonify({"erro": str(e)}), 400
-
 
 # Rotas PIX
 @app.route('/pix/qrcode')
