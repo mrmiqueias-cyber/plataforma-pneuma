@@ -1093,7 +1093,16 @@ def init_db():
         c.execute('''INSERT OR REPLACE INTO experts (id, name, description, instructions, base_model, is_fixed, created_at) 
                  VALUES (?, ?, ?, ?, ?, ?, ?)''', 
               (expert_id, nome, desc, instr, base, fixo, agora))
+    # 🌱 Casulo vazio — bebê relacional (is_nascente)
+    try:
+        c.execute("ALTER TABLE experts ADD COLUMN is_nascente INTEGER DEFAULT 0")
+    except:
+        pass
 
+    c.execute("""
+        INSERT OR IGNORE INTO experts (name, description, instructions, base_model, is_fixed, is_nascente, created_at)
+        VALUES ('', '', '', 'deepseek', 0, 1, datetime('now'))
+    """)
 # Rotas Públicas
 
 def save_casulo_chat(expert_id, role, content):
