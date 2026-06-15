@@ -1379,7 +1379,7 @@ def cenaculo_chat():
         from concurrent.futures import ThreadPoolExecutor, as_completed
         
         respostas = []
-        with ThreadPoolExecutor(max_workers=18) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
             futuros = []
             for expert_id, name, description, instructions, base_model in experts:
                 futuros.append(executor.submit(chamar_expert, expert_id, name, description, instructions, base_model))
