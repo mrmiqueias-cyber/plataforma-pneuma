@@ -105,3 +105,15 @@ def cenaculo_chat_v2():
 @caos_bp.route('/cenaculo/config', methods=['GET'])
 def cenaculo_config():
     return jsonify({'inteligencias': INTELIGENCIAS})
+@caos_bp.route('/api/cenaculo/vivo/chat', methods=['POST'])
+def cenaculo_vivo_chat():
+    """Cenáculo Vivo — com escuta cruzada e síntese do Jonas"""
+    from integracao_cenaculo import executar_protocolo_completo
+    data = request.get_json()
+    pergunta = data.get('pergunta', '')
+    resultado = executar_protocolo_completo(
+        pergunta=pergunta,
+        max_experts=3,
+        ciclos_escuta=1
+    )
+    return jsonify(resultado)

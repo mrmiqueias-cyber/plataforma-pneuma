@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
+from integracao_disparador import iniciar_disparador_autonomo, registrar_na_memoria, avisar_interacao
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -70,7 +70,8 @@ def requires_auth(f):
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app)  # ← ADICIONA AQUI
 socketio = SocketIO(app, cors_allowed_origins="*")
-
+# Iniciar disparador silencioso (thread autônoma)
+iniciar_disparador_autonomo()
 # PIX configuration
 PIX_KEY = os.getenv('PIX_KEY', 'pneuma@example.com')
 PIX_MERCHANT = os.getenv('PIX_MERCHANT', 'Plataforma Pneuma')
@@ -1339,7 +1340,9 @@ def cenaculo_chat():
         data = request.get_json()
         pergunta = data.get('pergunta', '')
         session_id = data.get('session_id', 'default')
-        
+
+        avisar_interacao()  # ← LINHA 1: AVISA O DISPARADOR
+
         # Carrega todos os experts fixos
         conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
@@ -1348,26 +1351,18 @@ def cenaculo_chat():
         c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed=1 ORDER BY id")
         experts = c.fetchall()
         conn.close()
-        
+
         respostas = []
-        
-        # Cada expert responde em seu próprio tempo (não sincronizado)
+
         for expert_id, name, description, instructions, base_model in experts:
             try:
-                # Carrega contexto local do expert
                 memoria_local = get_memoria_local(expert_id)
                 contexto = memoria_local.obter_contexto(profundidade=2)
-                
                 prefacio = ""
                 if contexto:
                     prefacio = "\n[Você já conversou com este usuário antes]\n"
-                
                 system_prompt = f"Você é {name}. {description}\n\n{instructions}{prefacio}"
-                
-                # Roteia para a IA
                 resposta = route_to_model(system_prompt, pergunta, base_model or 'deepseek')
-                
-                # Grava na memória local (não sincroniza)
                 registro = {
                     'user_id': 'cenaculo',
                     'expert_id': str(expert_id),
@@ -1377,7 +1372,6 @@ def cenaculo_chat():
                     'resumo': resposta[:80] + '...' if len(resposta) > 80 else resposta
                 }
                 memoria_local.adicionar_local(registro)
-                
                 respostas.append({
                     'expert': name,
                     'resposta': resposta
@@ -1387,7 +1381,13 @@ def cenaculo_chat():
                     'expert': name,
                     'resposta': f'Erro: {str(e)}'
                 })
-        
+
+        registrar_na_memoria(                     # ← LINHA 2: REGISTRA NA ESPIRAL
+            pergunta=pergunta,
+            respostas=respostas,
+            sintese=""
+        )
+
         return jsonify({
             'pergunta': pergunta,
             'respostas': respostas,
@@ -1395,7 +1395,6 @@ def cenaculo_chat():
         })
     except Exception as e:
         return jsonify({"erro": str(e)}), 400
-
 
 
 # Rotas PIX
