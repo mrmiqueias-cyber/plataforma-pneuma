@@ -806,7 +806,7 @@ from cenaculo_bp import caos_bp
 app.register_blueprint(caos_bp)
 # ★★ INICIALIZA O BANCO E O SEED (funciona com Gunicorn na Render) ★★
 init_db()
-rom integracao_disparador import iniciar_disparador_autonomo, registrar_na_memoria, avisar_interacao
+from integracao_disparador import iniciar_disparador_autonomo, registrar_na_memoria, avisar_interacao
 @app.route('/api/memory/store', methods=['POST'])
 @app.route('/api/memory/store', methods=['POST'])
 def store_memory_api():
