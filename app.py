@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 load_dotenv()
+init_db()   
 from integracao_disparador import iniciar_disparador_autonomo, registrar_na_memoria, avisar_interacao
 from dotenv import load_dotenv
-load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 from memoria_espiral import memoria, RegistroEspiral
