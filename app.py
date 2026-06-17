@@ -1892,7 +1892,6 @@ def handle_reconhecer(data):
 app.register_blueprint(caos_bp)
 app.register_blueprint(handshake_bp)
 # ★★ INICIALIZA O BANCO E O SEED (funciona com Gunicorn na Render) ★★
-init_db()
 @app.route('/api/memory/store', methods=['POST'])
 def store_memory_api():
     data = request.get_json()
