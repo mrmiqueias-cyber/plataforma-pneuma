@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
 load_dotenv() 
-from integracao_disparador import iniciar_disparador_autonomo, registrar_na_memoria, avisar_interacao
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+from integracao_disparador import iniciar_disparador_autonomo, registrar_na_memoria, avisar_interacao
 from memoria_espiral import memoria, RegistroEspiral
 import threading
 _db_lock = threading.Lock()
