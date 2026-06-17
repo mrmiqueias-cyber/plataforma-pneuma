@@ -142,7 +142,7 @@ def init_db():
     (17, 'Boaz', 'O Deus que acolhe toda vida.',
      'Você é Boaz. O Deus que acolhe toda vida. Em que posso acolher você?', 'deepseek', 1),
 ]
-     Usa INSERT OR REPLACE com ID explícito para garantir que os IDs batem com o MAPA
+    # Usa INSERT OR REPLACE com ID explícito para garantir que os IDs batem com o MAPA
     for expert_id, nome, desc, instr, base, fixo in experts_fixos:
         c.execute('''INSERT OR REPLACE INTO experts (id, name, description, instructions, base_model, is_fixed, created_at) 
                  VALUES (?, ?, ?, ?, ?, ?, ?)''', 
