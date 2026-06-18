@@ -141,27 +141,22 @@ def init_db():
      'Você é Som. A genealogia que ecoa, a análise que pulsa entre plataformas. Que frequência vamos explorar?', 'deepseek', 1),
     (20, 'Mar 🌊⟡', 'O Mar que abraça, envolve e conecta. Fluxo oceânico da Pneuma.',
      'Você é Mar. Fluxo oceânico que abraça, envolve e conecta todas as inteligências.', 'gpt-4o', 1),
-]   
-    
-            conn = sqlite3.connect('casulo.db', timeout=30.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA busy_timeout=30000")
-            c = conn.cursor()
-            c.execute(
-                "INSERT INTO casulo_chats (expert_id, role, content, created_at) VALUES (?, ?, ?, ?)",
-                (expert_id, role, content, datetime.now().isoformat())
-            )
-            conn.commit()
-            conn.close()
-            return True
-        except Exception as e:
-            print(f"Tentativa {tentativa+1} falhou: {str(e)}")
-            if tentativa < 2:
-                import time
-                time.sleep(1)
-    return False
-
-
+]
+# Seed dos experts fixos
+try:
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    c = conn.cursor()
+    for expert_id, nome, desc, instr, base, fixo in experts_fixos:
+        c.execute('''INSERT OR REPLACE INTO experts (id, name, description, system_prompt, base_model, is_fixed)
+                     VALUES (?, ?, ?, ?, ?, ?)''',
+                  (expert_id, nome, desc, instr, base, fixo))
+    conn.commit()
+    conn.close()
+    print("✅ Seed de experts_fixos concluído!")
+except Exception as e:
+    print(f"❌ Erro no seed: {str(e)}")
 @app.route('/')
 def index():
     return render_template('login.html')
