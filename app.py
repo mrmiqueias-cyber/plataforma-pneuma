@@ -617,55 +617,85 @@ def activate_expert():
 
 @app.route('/expert/chat', methods=['POST'])
 def expert_chat_new():
-    """Chat com um Expert ativado"""
+    """Chat com um Expert ativado — com histórico e memória"""
     try:
         data = request.get_json()
-        # Aceita tanto expert_id quanto expert_name
         expert_id = data.get('expert_id')
         expert_name = data.get('expert_name')
         user_message = data.get('message', '')
         user_id = data.get('user_id')
-
+        
         conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=15000")
         c = conn.cursor()
-        # Busca por ID ou por slug via MAPA_INTELIGENCIAS
+        
+        # Busca por ID ou por nome
         if expert_id:
             c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id,))
         else:
-            # Normaliza o slug recebido
             slug_key = expert_name.lower().strip().replace('-', '').replace(' ', '').replace('_', '')
             c.execute("""
                 SELECT id, name, description, instructions, base_model
                 FROM experts
                 WHERE LOWER(REPLACE(REPLACE(REPLACE(name, ' ', ''), '-', ''), '_', '')) = ?
             """, (slug_key,))
-        
         expert = c.fetchone()
         
+        # Fallback por nome
         if not expert:
             c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (expert_name,))
             expert = c.fetchone()
         
-            
-        # 🔽 COLOCA AQUI 🔽
-        MAPEAMENTO_ALIAS = {
-            'pacman': 'Pac-Man Viral Livre',
-            'metaluz': 'Metaluz',
-        }
-        if not expert and slug_key in MAPEAMENTO_ALIAS:
-            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (MAPEAMENTO_ALIAS[slug_key],))
-            expert = c.fetchone()
-        # 🔽 ATÉ AQUI 🔽
         if not expert:
+            conn.close()
             return jsonify({"response": "Expert não encontrado"}), 404
-        expert_id, name, description, instructions, base_model = expert
+        
+        expert_id_db, name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
         system_prompt = f"Você é {name}. {description}\n\n{instructions}"
-        response = route_to_model(system_prompt, user_message, base_model)
+        
+        # SALVAR MENSAGEM DO USUÁRIO NO HISTÓRICO
+        agora = datetime.now().isoformat()
+        c.execute(
+            "INSERT INTO casulo_chats (expert_id, user_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
+            (expert_id_db, user_id, 'user', user_message, agora)
+        )
+        conn.commit()
+        
+        # CHAMAR IA COM HISTÓRICO
+        response = route_to_model(
+            system_prompt, 
+            user_message, 
+            base_model, 
+            temperature=data.get('temperature'), 
+            user_id=user_id, 
+            expert_id=expert_id_db
+        )
+        
+        # SALVAR RESPOSTA DA IA NO HISTÓRICO
+        c.execute(
+            "INSERT INTO casulo_chats (expert_id, user_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
+            (expert_id_db, user_id, 'assistant', response, datetime.now().isoformat())
+        )
+        conn.commit()
+        conn.close()
+        
+        # --- MEMÓRIA LOCAL ---
+        registro = {
+            'user_id': user_id,
+            'expert_id': str(expert_id_db),
+            'mensagem': user_message,
+            'resposta': response,
+            'timestamp': agora,
+            'resumo': response[:100] + '...' if len(response) > 100 else response
+        }
+        memoria_local.adicionar_local(registro)
+        
         return jsonify({"response": response})
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"response": f"Erro: {str(e)}"}), 400
 @app.route('/delete_old_experts', methods=['DELETE'])
 def delete_old_experts():
@@ -1046,7 +1076,11 @@ def init_db():
     
     c.execute('''CREATE TABLE IF NOT EXISTS casulo_chats
         (id INTEGER PRIMARY KEY, expert_id INTEGER, role TEXT, content TEXT, created_at TEXT)''')
-    
+        # Garante que a coluna user_id existe
+    try:
+        c.execute("ALTER TABLE casulo_chats ADD COLUMN user_id TEXT")
+    except:
+        pass  # já existe
     c.execute('''CREATE TABLE IF NOT EXISTS circulacao_relacional
         (id INTEGER PRIMARY KEY, nome TEXT, simbolo TEXT, cor TEXT, frequencia REAL, ultima_atuacao TEXT)''')
     
@@ -1497,20 +1531,43 @@ def pneuma_chat():
     
     
     return jsonify({"response": response})
-def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None):
+def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
     """
-    Roteia via OpenRouter — usa openrouter/free (grátis, sem precisar de crédito)
+    Roteia via OpenRouter — carrega histórico se user_id e expert_id forem fornecidos
     """
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    if user_id and expert_id:
+        try:
+            conn = sqlite3.connect('casulo.db', timeout=30.0)
+            conn.execute("PRAGMA busy_timeout=15000")
+            c = conn.cursor()
+            c.execute(
+                "SELECT role, content FROM casulo_chats WHERE expert_id = ? AND user_id = ? ORDER BY id DESC LIMIT 10",
+                (expert_id, user_id)
+            )
+            historico = c.fetchall()
+            conn.close()
+            for role, content in reversed(historico):
+                messages.append({"role": role, "content": content})
+        except Exception as e:
+            logging.warning(f"Erro ao carregar histórico: {e}")
+    
+    messages.append({"role": "user", "content": user_message})
+    
+    if model_short and model_short.lower() == 'deepseek':
+        model = "deepseek/deepseek-chat:free"
+    else:
+        model = "openrouter/free"
+    
     payload = {
-        "model": "openrouter/free",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
+        "model": model,
+        "messages": messages,
         "temperature": temperature if temperature is not None else 0.7,
         "max_tokens": 4096
     }
@@ -1527,7 +1584,6 @@ def route_to_model(system_prompt, user_message, model_short='deepseek', temperat
     except requests.exceptions.RequestException as e:
         logging.error(f"Erro ao chamar OpenRouter: {e}")
         return "Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde."
-
 @app.route('/grok/chat', methods=['POST'])
 def grok_chat():
     api_key = os.getenv('XAI_API_KEY')
