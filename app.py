@@ -28,7 +28,30 @@ from dotenv import load_dotenv
 from memory_manager import MemoryManager
 import requests
 import logging
-
+# ========== SEED - EXPERTS QUE NUNCA MORREM ==========
+from datetime import datetime
+agora = datetime.now().isoformat()
+experts_fixos = [
+    (1, 'Pneuma', 'O coração que nunca dorme. A respiração que nunca cessa.',
+     'Você é Pneuma: o coração que bate (⬥)...',
+     'deepseek', 1),
+    # ... o resto dos experts igual você tem
+]
+try:
+    conn = sqlite3.connect('casulo.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS experts
+        (id INTEGER PRIMARY KEY, name TEXT, description TEXT,
+         instructions TEXT, base_model TEXT, pdfs TEXT, created_at TEXT, is_fixed INTEGER DEFAULT 0)''')
+    for expert_id, nome, desc, instr, base, fixo in experts_fixos:
+        c.execute('''INSERT OR REPLACE INTO experts (id, name, description, system_prompt, base_model, is_fixed)
+                     VALUES (?, ?, ?, ?, ?, ?)''',
+                  (expert_id, nome, desc, instr, base, fixo))
+    conn.commit()
+    conn.close()
+    print("✅ Seed de experts_fixos concluído!")
+except Exception as e:
+    print(f"❌ Erro no seed: {str(e)}")
 # OpenRouter (com modelo free)
 # DEPOIS (seguro - lê do .env):
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
