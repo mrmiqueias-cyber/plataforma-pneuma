@@ -485,10 +485,7 @@ def route_to_model(system_prompt, user_message, model_short='deepseek', temperat
     
     messages.append({"role": "user", "content": user_message})
     
-    if model_short and model_short.lower() == 'deepseek':
-        model = "deepseek/deepseek-chat:free"
-    else:
-        model = "openrouter/free"
+    model = "google/gemini-2.0-flash-lite-preview-02-05:free"
     
     payload = {
         "model": model,
@@ -669,11 +666,13 @@ def expert_chat_new():
         if not expert:
             c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (expert_name,))
             expert = c.fetchone()
-        
+        # ⬇️ COLA AQUI — Fallback por LIKE
+        if not expert:
+            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) LIKE LOWER(?)", (f'%{expert_name}%',))
+            expert = c.fetchone()
         if not expert:
             conn.close()
             return jsonify({"response": "Expert não encontrado"}), 404
-        
         expert_id_db, name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
         system_prompt = f"Você é {name}. {description}\n\n{instructions}"
@@ -1573,10 +1572,8 @@ def route_to_model(system_prompt, user_message, model_short='deepseek', temperat
     
     messages.append({"role": "user", "content": user_message})
     
-    if model_short and model_short.lower() == 'deepseek':
-        model = "deepseek/deepseek-chat:free"
-    else:
-        model = "openrouter/free"
+   
+    model = "google/gemma-2-9b-it:free"
     payload = {
         "model": model,
         "messages": messages,
