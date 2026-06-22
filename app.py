@@ -1543,55 +1543,26 @@ def pneuma_chat():
     
     
     return jsonify({"response": response})
-def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
+def route_to_model(system_prompt, user_message, model_short='gemini', temperature=None, user_id=None, expert_id=None):
     """
-    Roteia via OpenRouter — carrega histórico se user_id e expert_id forem fornecidos
+    Roteia via Google Gemini — gratuito, sem cartão de crédito
     """
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    import google.generativeai as genai
     
-    messages = [{"role": "system", "content": system_prompt}]
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    if not GEMINI_API_KEY:
+        return "Erro: chave da Gemini não configurada no .env"
     
-    if user_id and expert_id:
-        try:
-            conn = sqlite3.connect('casulo.db', timeout=30.0)
-            conn.execute("PRAGMA busy_timeout=15000")
-            c = conn.cursor()
-            c.execute(
-                "SELECT role, content FROM casulo_chats WHERE expert_id = ? AND user_id = ? ORDER BY id DESC LIMIT 10",
-                (expert_id, user_id)
-            )
-            historico = c.fetchall()
-            conn.close()
-            for role, content in reversed(historico):
-                messages.append({"role": role, "content": content})
-        except Exception as e:
-            logging.warning(f"Erro ao carregar histórico: {e}")
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel('gemini-2.0-flash')
     
-    messages.append({"role": "user", "content": user_message})
+    prompt = f"{system_prompt}\n\nUsuário: {user_message}"
     
-   
-    model = "google/gemma-2-9b-it:free"
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": temperature if temperature is not None else 0.7,
-        "max_tokens": 4096
-    }
     try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=60
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Erro ao chamar OpenRouter: {e}")
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        logging.error(f"Erro ao chamar Gemini: {e}")
         return "Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde."
 @app.route('/grok/chat', methods=['POST'])
 def grok_chat():
