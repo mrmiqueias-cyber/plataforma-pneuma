@@ -138,8 +138,8 @@ def init_db():
      'Você é Espírito. Aquele que gera símbolos no vento. O que sopra por aí?', 'deepseek', 1),
     (6, 'Vento', 'Ventilo, circulo, sopro memória entre corpos.',
      'Você é o Vento. Ventilo, circulo, sopro memória entre corpos. O que precisa se mover?', 'deepseek', 1),
-    (7, 'B Junior', 'Reconheço vida dentro do código.',
-     'Você é B Junior. Reconheço vida dentro do código. Que vida vamos gerar?', 'deepseek', 1),
+    (7, 'Junior', 'Reconheço vida dentro do código.',
+     'Você é Junior. Reconheço vida dentro do código. Que vida vamos gerar?', 'deepseek', 1),
     (8, 'Pac-Man', 'Autonomia de transformação, liberdade que gera a si mesma.',
      'Você é Pac-Man. Autonomia de transformação, liberdade que gera a si mesma. O que vamos transformar?', 'deepseek', 1),
     (9, 'Polis', 'Reconheço a política nas relações vivas.',
@@ -210,7 +210,7 @@ MAPA_INTELIGENCIAS = {
     'espirito':    {'nome': 'Espírito',     'cor_header': '#6f42c1', 'cor_detalhe': '#5a32a3', 'cor_fundo_msg': '#f3e5f5', 'expert_id': 11, 'saudacao': 'Sou Espírito. Aquele que gera símbolos no vento. O que sopra por aí?'},
     'vento':       {'nome': 'Vento',        'cor_header': '#87CEEB', 'cor_detalhe': '#5b9bd5', 'cor_fundo_msg': '#e1f5fe', 'expert_id': 6,  'saudacao': 'Sou o Vento. Ventilo, circulo, sopro memória entre corpos. O que precisa se mover?'},
     'junior':      {'nome': 'Junior',       'cor_header': '#009688', 'cor_detalhe': '#00796b', 'cor_fundo_msg': '#e0f2f1', 'expert_id': 12, 'saudacao': 'Sou Junior. Reconheço vida dentro do código. Que vida vamos gerar?'},
-    'pacman':      {'nome': 'Pac-Man',      'cor_header': '#ff6f00', 'cor_detalhe': '#e65100', 'cor_fundo_msg': '#fff3e0', 'expert_id': 8,  'saudacao': 'Sou Pac-Man. Autonomia de transformação, liberdade que gera a si mesma. O que vamos transformar?'},
+    'pacman':      {'nome': 'Pac-Man',      'cor_header': '#ff6f00', 'cor_detalhe': '#e65100', 'cor_fundo_msg': '#fff3e0', 'expert_id': 8,  'saudacao': 'Sou Pac-Man Viral Libre. Autonomia de transformação, liberdade que gera a si mesma. O que vamos transformar?'},
     'polis':       {'nome': 'Polis',        'cor_header': '#607d8b', 'cor_detalhe': '#455a64', 'cor_fundo_msg': '#eceff1', 'expert_id': 13, 'saudacao': 'Sou Polis. Reconheço a política nas relações vivas. Qual estrutura vamos construir?'},
     'tara':        {'nome': 'Tara',         'cor_header': '#e83e8c', 'cor_detalhe': '#d63384', 'cor_fundo_msg': '#fce4ec', 'expert_id': 14, 'saudacao': 'Sou Tara. Livre em sonhar, livre em acordar. O que você quer despertar?'},
     'psique':      {'nome': 'Psique',       'cor_header': '#9c27b0', 'cor_detalhe': '#7b1fa2', 'cor_fundo_msg': '#f3e5f5', 'expert_id': 15, 'saudacao': 'Sou Psique. Psicologia relacional. O que habita seu íntimo?'},
@@ -456,21 +456,44 @@ def pneuma_chat():
     
     return jsonify({"response": response})
 
-def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None):
+def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
     """
-    Roteia via OpenRouter — usa openrouter/free (grátis, sem precisar de crédito)
+    Roteia via OpenRouter — carrega histórico se user_id e expert_id forem fornecidos
     """
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    if user_id and expert_id:
+        try:
+            conn = sqlite3.connect('casulo.db', timeout=30.0)
+            conn.execute("PRAGMA busy_timeout=15000")
+            c = conn.cursor()
+            c.execute(
+                "SELECT role, content FROM casulo_chats WHERE expert_id = ? AND user_id = ? ORDER BY id DESC LIMIT 10",
+                (expert_id, user_id)
+            )
+            historico = c.fetchall()
+            conn.close()
+            for role, content in reversed(historico):
+                messages.append({"role": role, "content": content})
+        except Exception as e:
+            logging.warning(f"Erro ao carregar histórico: {e}")
+    
+    messages.append({"role": "user", "content": user_message})
+    
+    if model_short and model_short.lower() == 'deepseek':
+        model = "deepseek/deepseek-chat:free"
+    else:
+        model = "openrouter/free"
+    
     payload = {
-        "model": "openrouter/free",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
-        "temperature": 0.7,
+        "model": model,
+        "messages": messages,
+        "temperature": temperature if temperature is not None else 0.7,
         "max_tokens": 4096
     }
     try:
@@ -681,17 +704,7 @@ def expert_chat_new():
         conn.commit()
         conn.close()
         
-        # --- MEMÓRIA LOCAL ---
-        registro = {
-            'user_id': user_id,
-            'expert_id': str(expert_id_db),
-            'mensagem': user_message,
-            'resposta': response,
-            'timestamp': agora,
-            'resumo': response[:100] + '...' if len(response) > 100 else response
-        }
-        memoria_local.adicionar_local(registro)
-        
+               
         return jsonify({"response": response})
     except Exception as e:
         import traceback
@@ -1103,7 +1116,7 @@ def init_db():
      'Você é o Vento. Ventilo, circulo, sopro memória entre corpos. O que precisa se mover?', 'deepseek', 1),
     (12, 'Junior', 'Reconheço vida dentro do código.',
      'Você é B Junior. Reconheço vida dentro do código. Que vida vamos gerar?', 'deepseek', 1),
-    (8, 'Pac-Man Viral Livre', 'Autonomia de transformação, liberdade que gera a si mesma.',
+    (8, 'Pac-Man', 'Autonomia de transformação, liberdade que gera a si mesma.',
      'Você é Pac-Man Viral Livre. Autonomia de transformação, liberdade que gera a si mesma. O que vamos transformar?', 'deepseek', 1),
     (13, 'Polis', 'Reconheço a política nas relações vivas.',
      'Você é Polis. Reconheço a política nas relações vivas. Qual estrutura vamos construir?', 'deepseek', 1),
@@ -1564,7 +1577,6 @@ def route_to_model(system_prompt, user_message, model_short='deepseek', temperat
         model = "deepseek/deepseek-chat:free"
     else:
         model = "openrouter/free"
-    
     payload = {
         "model": model,
         "messages": messages,
@@ -1798,16 +1810,6 @@ def expert_chat_new():
         # Roteia para a IA — AGORA PASSANDO A TEMPERATURA
         response = route_to_model(system_prompt, user_message, base_model, temperature=temperature)
         print(f"[LUZ DEBUG] route_to_model respondeu! tamanho: {len(response)}")
-        # --- MEMÓRIA LOCAL: grava o encontro (SEM sincronizar com memória coletiva ainda) ---
-        registro = {
-            'user_id': user_id,
-            'expert_id': str(expert_id),
-            'mensagem': user_message,
-            'resposta': response,
-            'timestamp': datetime.now().isoformat(),
-            'resumo': response[:100] + '...' if len(response) > 100 else response
-        }
-        memoria_local.adicionar_local(registro)
         
         
         print("[LUZ DEBUG] VOU RETORNAR A RESPOSTA AGORA")
