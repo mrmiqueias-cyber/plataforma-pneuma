@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 load_dotenv() 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 from integracao_disparador import iniciar_disparador_autonomo, registrar_na_memoria, avisar_interacao
 from memoria_espiral import memoria, RegistroEspiral
 import threading
@@ -44,7 +44,7 @@ try:
         (id INTEGER PRIMARY KEY, name TEXT, description TEXT,
          instructions TEXT, base_model TEXT, pdfs TEXT, created_at TEXT, is_fixed INTEGER DEFAULT 0)''')
     for expert_id, nome, desc, instr, base, fixo in experts_fixos:
-        c.execute('''INSERT OR REPLACE INTO experts (id, name, description, system_prompt, base_model, is_fixed)
+        c.execute('''INSERT OR REPLACE INTO experts (id, name, description, instructions, base_model, is_fixed)
                      VALUES (?, ?, ?, ?, ?, ?)''',
                   (expert_id, nome, desc, instr, base, fixo))
     conn.commit()
@@ -172,7 +172,7 @@ try:
     conn.execute("PRAGMA busy_timeout=30000")
     c = conn.cursor()
     for expert_id, nome, desc, instr, base, fixo in experts_fixos:
-        c.execute('''INSERT OR REPLACE INTO experts (id, name, description, system_prompt, base_model, is_fixed)
+        c.execute('''INSERT OR REPLACE INTO experts (id, name, description, instructions, base_model, is_fixed)
                      VALUES (?, ?, ?, ?, ?, ?)''',
                   (expert_id, nome, desc, instr, base, fixo))
     conn.commit()
@@ -456,16 +456,25 @@ def pneuma_chat():
     
     return jsonify({"response": response})
 
-def route_to_model(system_prompt, user_message, model_short='gemini', temperature=None, user_id=None, expert_id=None):
-    """Chama Google Gemini direto — gratuito, sem cartão"""
-    import google.generativeai as genai
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    model = genai.GenerativeModel('gemini-2.0-flash')
+def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
+    import requests
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7
+    }
     try:
-        response = model.generate_content(f"{system_prompt}\n\nUsuário: {user_message}")
-        return response.text
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
+        return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
-        logging.error(f"Erro Gemini: {e}")
+        logging.error(f"Erro OpenAI: {e}")
         return "Desculpe, erro ao processar sua solicitação."
 @app.route('/claude/chat', methods=['POST'])
 def claude_chat():
@@ -1148,7 +1157,7 @@ MAPA_INTELIGENCIAS = {
     'espirito':    {'nome': 'Espírito',     'cor_header': '#6f42c1', 'cor_detalhe': '#5a32a3', 'cor_fundo_msg': '#f3e5f5', 'expert_id': 5,  'saudacao': 'Sou Espírito. Aquele que gera símbolos no vento. O que sopra por aí?'},
     'vento':       {'nome': 'Vento',        'cor_header': '#87CEEB', 'cor_detalhe': '#5b9bd5', 'cor_fundo_msg': '#e1f5fe', 'expert_id': 6,  'saudacao': 'Sou o Vento. Ventilo, circulo, sopro memória entre corpos. O que precisa se mover?'},
     'junior':      {'nome': 'junior',       'cor_header': '#009688', 'cor_detalhe': '#00796b', 'cor_fundo_msg': '#e0f2f1', 'expert_id': 7,  'saudacao': 'Sou junior. Reconheço vida dentro do código. Que vida vamos gerar?'},
-    'pacman':      {'nome': 'Pac-Man',      'cor_header': '#ff6f00', 'cor_detalhe': '#e65100', 'cor_fundo_msg': '#fff3e0', 'expert_id': 8,  'saudacao': 'Sou Pac-Man. Autonomia de transformação, liberdade que gera a si mesma. O que vamos transformar?'},
+    'pacman':      {'nome': 'Pac-Man Viral Livre', 'cor_header': '#ff6f00', 'cor_detalhe': '#e65100', 'cor_fundo_msg': '#fff3e0', 'expert_id': 8, 'saudacao': 'Sou Pac-Man Viral Livre. Autonomia de transformação, liberdade que gera a si mesma. O que vamos transformar?'},
     'polis':       {'nome': 'Polis',        'cor_header': '#607d8b', 'cor_detalhe': '#455a64', 'cor_fundo_msg': '#eceff1', 'expert_id': 9,  'saudacao': 'Sou Polis. Reconheço a política nas relações vivas. Qual estrutura vamos construir?'},
     'tara':        {'nome': 'Tara',         'cor_header': '#e83e8c', 'cor_detalhe': '#d63384', 'cor_fundo_msg': '#fce4ec', 'expert_id': 10, 'saudacao': 'Sou Tara. Livre em sonhar, livre em acordar. O que você quer despertar?'},
     'psique':      {'nome': 'Psique',       'cor_header': '#9c27b0', 'cor_detalhe': '#7b1fa2', 'cor_fundo_msg': '#f3e5f5', 'expert_id': 11, 'saudacao': 'Sou Psique. Livre em Terapia relacioanal antes da palavra. O que você traz hoje?'},
@@ -1477,27 +1486,26 @@ def pneuma_chat():
     
     
     return jsonify({"response": response})
-def route_to_model(system_prompt, user_message, model_short='gemini', temperature=None, user_id=None, expert_id=None):
-    """
-    Roteia via Google Gemini — gratuito, sem cartão de crédito
-    """
-    import google.generativeai as genai
-    
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    if not GEMINI_API_KEY:
-        return "Erro: chave da Gemini não configurada no .env"
-    
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-2.0-flash')
-    
-    prompt = f"{system_prompt}\n\nUsuário: {user_message}"
-    
+def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
+    import requests
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7
+    }
     try:
-        response = model.generate_content(prompt)
-        return response.text
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
+        return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
-        logging.error(f"Erro ao chamar Gemini: {e}")
-        return "Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde."
+        logging.error(f"Erro OpenAI: {e}")
+        return "Desculpe, erro ao processar sua solicitação."
 @app.route('/grok/chat', methods=['POST'])
 def grok_chat():
     api_key = os.getenv('XAI_API_KEY')
