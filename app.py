@@ -50,8 +50,23 @@ try:
     conn.commit()
     conn.close()
     print("✅ Seed de experts_fixos concluído!")
+
+   
+# ========== SINCRONIZA NOMES COM MAPA_INTELIGENCIAS ==========
+try:
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
+    c = conn.cursor()
+    for sluexcept Exception as e:
+    print(f"❌ Erro no seed: {str(e)}")g, dados in MAPA_INTELIGENCIAS.items():
+        expert_id = dados['expert_id']
+        nome_correto = dados['nome']
+        c.execute("UPDATE experts SET name = ? WHERE id = ? AND name != ?",
+                  (nome_correto, expert_id, nome_correto))
+    conn.commit()
+    conn.close()
+    print("✅ Nomes dos experts sincronizados com MAPA_INTELIGENCIAS!")
 except Exception as e:
-    print(f"❌ Erro no seed: {str(e)}")
+    print(f"❌ Erro na sincronizacao: {str(e)}") 
 # OpenRouter (com modelo free)
 # DEPOIS (seguro - lê do .env):
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
