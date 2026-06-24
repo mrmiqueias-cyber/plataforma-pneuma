@@ -51,8 +51,8 @@ try:
     conn.close()
     print("✅ Seed de experts_fixos concluído!")
 
-   
-
+except Exception as e:
+    print(f"❌ Erro no seed: {str(e)}")
 
 # ========== SINCRONIZA NOMES COM MAPA_INTELIGENCIAS ==========
 def sincronizar_nomes_experts():
