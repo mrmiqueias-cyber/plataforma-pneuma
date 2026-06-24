@@ -53,6 +53,7 @@ try:
 
    
 
+
 # ========== SINCRONIZA NOMES COM MAPA_INTELIGENCIAS ==========
 def sincronizar_nomes_experts():
     try:
