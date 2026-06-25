@@ -627,7 +627,7 @@ def expert_chat_new():
         
         # Fallback por nome
         if not expert:
-            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (expert_name,))
+            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE REPLACE(LOWER(name), '-', '') = REPLACE(LOWER(?), '-', '')", (expert_name,))
             expert = c.fetchone()
         # ⬇️ COLA AQUI — Fallback por LIKE
         if not expert:

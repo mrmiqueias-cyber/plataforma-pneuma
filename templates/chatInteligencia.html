@@ -152,7 +152,7 @@
         const res = await fetch('/expert/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ expert_name: aiKey, user_id: userId, message: text })
+          body: JSON.stringify({ expert_name: chaveNorm, user_id: userId, message: text })
         });
         const data = await res.json();
         addMessage(data.response, 'expert');
