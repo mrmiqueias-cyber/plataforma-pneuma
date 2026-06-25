@@ -1699,7 +1699,7 @@ def expert_chat_new():
         conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
         c = conn.cursor()
-        c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) = LOWER(?)", (expert_name,))
+       c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE REPLACE(LOWER(name), '-', '') = REPLACE(LOWER(?), '-', '')", (expert_name,))
         expert = c.fetchone()
         conn.close()
         
