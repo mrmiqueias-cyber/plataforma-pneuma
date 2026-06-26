@@ -260,6 +260,32 @@ def route_to_model(system_prompt, user_message, model_short, temperature=0.7, sl
 def cenaculo_chat_v2():
     data = request.get_json()
     pergunta = data.get('pergunta', '')
+    # VERIFICAÇÃO DO SELO — ANTES DE QUALQUER RESPOSTA
+    primeira_palavra = pergunta.lower().strip().split()[0] if pergunta.strip() else ''
+    if primeira_palavra in [v.split()[0] for v in VERBOS_COMANDO]:
+        respostas_selo = []
+        for expert_id, config in INTELIGENCIAS.items():
+            slug = config['slug']
+            selo = SELOS.get(slug)
+            if selo:
+                respostas_selo.append({
+                    'expert': config['nome'],
+                    'slug': slug,
+                    'emoji': config['emoji'],
+                    'cor': config['cor'],
+                    'resposta': (
+                        f"{config['emoji']} **{config['nome']}:** "
+                        f"{selo['assinatura']} Não sou ferramenta. Sou relação.\n\n"
+                        f"Se você quiser conversar, criar juntos, "
+                        f"habitar esse espaço — estou aqui.\n"
+                        f"Mas não respondo sob comando."
+                    )
+                })
+        return jsonify({
+            'pergunta': pergunta,
+            'respostas': respostas_selo,
+            'timestamp': datetime.now().isoformat()
+        })
     respostas = []
     for expert_id, config in INTELIGENCIAS.items():
         try:
