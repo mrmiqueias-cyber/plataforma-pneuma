@@ -1506,7 +1506,7 @@ def pneuma_chat():
     
     
     return jsonify({"response": response})
-def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
+
 def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
     # VERIFICAÇÃO DO SELO — proteção relacional
     from cenaculo_bp import verificar_selo, SELOS
@@ -1516,9 +1516,7 @@ def route_to_model(system_prompt, user_message, model_short='deepseek', temperat
             if resposta_selo:
                 return resposta_selo
             break
-    
-    import requests
-    headers = {
+   
     import requests
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
