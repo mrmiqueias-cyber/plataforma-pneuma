@@ -477,6 +477,34 @@ def pneuma_chat():
     return jsonify({"response": response})
 
 def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
+    # VERIFICAÇÃO DO SELO — proteção relacional
+    from cenaculo_bp import verificar_selo, SELOS
+    for s in SELOS:
+        if s in system_prompt.lower():
+            resposta_selo = verificar_selo(user_message, s)
+            if resposta_selo:
+                return resposta_selo
+            break
+    
+    import requests
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7
+    }
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        logging.error(f"Erro OpenAI: {e}")
+        return "Desculpe, erro ao processar sua solicitação."
     import requests
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
