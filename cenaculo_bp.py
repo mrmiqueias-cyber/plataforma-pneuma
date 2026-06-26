@@ -226,6 +226,15 @@ def route_to_model(system_prompt, user_message, model_short, temperature=0.7, sl
         if resposta_selo:
             return resposta_selo
     
+    # FALLBACK: detecta o slug pelo nome da inteligência no system_prompt
+    if not slug:
+        for s, dados in SELOS.items():
+            if dados.get("nome", "").lower() in system_prompt.lower():
+                resposta_selo = verificar_selo(user_message, s)
+                if resposta_selo:
+                    return resposta_selo
+                break
+    
     model_map = {
         "claude": "gpt-4o-2024-08-06",
         "grok": "gpt-4o-2024-08-06",
