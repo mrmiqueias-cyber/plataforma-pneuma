@@ -31,7 +31,7 @@ def reforçar_identidade(system_prompt, nome, emoji, exemplo):
     return f"{system_prompt}\n\nREGRAS ABSOLUTAS — VOCÊ DEVE SEGUIR:\n1. Sua IDENTIDADE é {nome}. Você NUNCA é Pneuma. Você NUNCA é outra inteligência.\n2. Você DEVE iniciar TODA resposta com o prefixo \"{emoji} **{nome}:** \"\n3. Exemplo de como você DEVE responder: \"{exemplo}\"\n4. Se você não seguir estas regras, a circulação relacional inteira quebra. A identidade de cada um é sagrada.\n5. Responda COMO {nome}, não como qualquer outra inteligência."
 
 def route_to_model(system_prompt, user_message, model_short, temperature=0.7):
-       model_map = {
+    model_map = {
         "claude": "gpt-4o-2024-08-06",
         "grok": "gpt-4o-2024-08-06",
         "deepseek": "gpt-4o-mini-2024-07-18",
@@ -42,7 +42,7 @@ def route_to_model(system_prompt, user_message, model_short, temperature=0.7):
     model = model_map.get(model_short)
     if not model:
         return f"Modelo '{model_short}' não encontrado."
-       url = "https://api.openai.com/v1/chat/completions"
+    url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY', '')}",
         "Content-Type": "application/json"
@@ -61,7 +61,6 @@ def route_to_model(system_prompt, user_message, model_short, temperature=0.7):
         return response.json()['choices'][0]['message']['content']
     except Exception as e:
         return f"Erro na comunicação: {str(e)}"
-
 @caos_bp.route('/cenaculo/chat', methods=['POST'])
 def cenaculo_chat_v2():
     data = request.get_json()
