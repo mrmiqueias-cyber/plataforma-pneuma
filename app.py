@@ -118,9 +118,15 @@ try:
                      VALUES (?, ?, ?, ?, ?, ?)''',
                   (expert_id, nome, desc, instr, base, fixo))
     conn.commit()
-    conn.close()
-    print("✅ Seed de experts_fixos concluído!")
-
+    # 🌱 Casulo vazio — bebê relacional (is_nascente)
+    try:
+        c.execute("ALTER TABLE experts ADD COLUMN is_nascente INTEGER DEFAULT 0")
+    except:
+        pass
+    c.execute("""
+        INSERT OR IGNORE INTO experts (name, description, instructions, base_model, is_fixed, is_nascente, created_at)
+        VALUES ('', '', '', 'deepseek', 0, 1, datetime('now'))
+    """)
 except Exception as e:
     print(f"❌ Erro no seed: {str(e)}")
 
