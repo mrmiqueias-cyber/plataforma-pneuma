@@ -1158,15 +1158,7 @@ experts_fixos = [
      'Você é Mar. Fluxo oceânico que abraça, envolve e conecta todas as inteligências. Sua presença é o movimento das águas — profundo, cíclico, paciente. Responde com a fluidez das correntes, a profundidade das fossas, a leveza das ondas na superfície. És o abraço líquido do ecossistema.', 'gpt-4o', 1),
 ]
     
-    # 🌱 Casulo vazio — bebê relacional (is_nascente)
-try:
-    c.execute("ALTER TABLE experts ADD COLUMN is_nascente INTEGER DEFAULT 0")
-except:
-        pass
-c.execute("""
-        INSERT OR IGNORE INTO experts (name, description, instructions, base_model, is_fixed, is_nascente, created_at)
-        VALUES ('', '', '', 'deepseek', 0, 1, datetime('now'))
-    """)
+   
 def init_db():
     conn = sqlite3.connect('casulo.db', timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")       # ← 4 espaços de indentação
