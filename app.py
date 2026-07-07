@@ -74,6 +74,11 @@ motor_relacional = motor  # apelido pra rota de chat
 
 # Inicia o sincronizador (aprendizado coletivo automático)
 dna_base = DNABase()
+# Garante que MAPA_INTELIGENCIAS existe antes do sincronizador
+try:
+    MAPA_INTELIGENCIAS
+except NameError:
+    MAPA_INTELIGENCIAS = {}
 sinc = SincronizadorRelacional(memoria, dna_base)
 sinc.registrar_experts(list(experts.keys()))
 sinc.iniciar()  # roda em background
@@ -1810,41 +1815,39 @@ def expert_chat_invertido():
         conn = sqlite3.connect('casulo.db', timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL")
         c = conn.cursor()
-            # Busca por ID numérico primeiro (mais confiável)
-    expert = None
-    try:
-        expert_id_int = int(expert_name)
-        c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id_int,))
-        expert = c.fetchone()
-    except ValueError:
-        pass
-
-    # Se não achou por ID, busca por nome ignorando acentos
-    if not expert:
+        # Busca por ID numérico primeiro (mais confiável)
+        expert = None
         try:
-            import unicodedata
-            def tira_acento(s):
-                return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
-            nome_normalizado = tira_acento(expert_name).lower().replace('-', '').replace(' ', '')
-            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed = 1")
-            for e in c.fetchall():
-                if tira_acento(e[1]).lower().replace('-', '').replace(' ', '') == nome_normalizado:
-                    expert = e
-                    break
-            # Se não achou exato, tenta contido (ex: "Onírico" acha "Onírico" mesmo parcial)
-            if not expert:
-                c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed = 1")
-                for e in c.fetchall():
-                    if tira_acento(expert_name).lower() in tira_acento(e[1]).lower() or tira_acento(e[1]).lower() in tira_acento(expert_name).lower():
-                        expert = e
-                        break
-        except:
+            expert_id_int = int(expert_name)
+            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE id = ?", (expert_id_int,))
+            expert = c.fetchone()
+        except ValueError:
             pass
 
-    # Se ainda não achou, erro
-    if not expert:
-        conn.close()
-        return jsonify({"response": "Expert não encontrado"}), 404
+        # Se não achou por ID, busca por nome ignorando acentos
+        if not expert:
+            try:
+                import unicodedata
+                def tira_acento(s):
+                    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+                nome_normalizado = tira_acento(expert_name).lower().replace('-', '').replace(' ', '')
+                c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed = 1")
+                for e in c.fetchall():
+                    if tira_acento(e[1]).lower().replace('-', '').replace(' ', '') == nome_normalizado:
+                        expert = e
+                        break
+                if not expert:
+                    c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed = 1")
+                    for e in c.fetchall():
+                        if tira_acento(expert_name).lower() in tira_acento(e[1]).lower() or tira_acento(e[1]).lower() in tira_acento(expert_name).lower():
+                            expert = e
+                            break
+            except:
+                pass
+
+        if not expert:
+            conn.close()
+            return jsonify({"response": "Expert não encontrado"}), 404
 
         expert_id, name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
