@@ -710,14 +710,38 @@ def expert_chat_new():
             """, (slug_key,))
         expert = c.fetchone()
         
-        # Fallback por nome
+                # Fallback por nome (sem acento)
         if not expert:
-            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE REPLACE(LOWER(name), '-', '') = REPLACE(LOWER(?), '-', '')", (expert_name,))
-            expert = c.fetchone()
-        # ⬇️ COLA AQUI — Fallback por LIKE
+            try:
+                c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE REPLACE(LOWER(name), '-', '') = REPLACE(LOWER(?), '-', '')", (expert_name,))
+                expert = c.fetchone()
+            except:
+                pass
+
+        # Fallback ignorando acentos (resolve Espírito, Onírico etc.)
         if not expert:
-            c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) LIKE LOWER(?)", (f'%{expert_name}%',))
-            expert = c.fetchone()
+            try:
+                import unicodedata
+                def tira_acento(s):
+                    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+                nome_normalizado = tira_acento(expert_name).lower().replace('-', '')
+                c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE is_fixed = 1")
+                for e in c.fetchall():
+                    if tira_acento(e[1]).lower().replace('-', '') == nome_normalizado:
+                        expert = e
+                        break
+            except:
+                pass
+
+        # Fallback por LIKE (qualquer parte do nome)
+        if not expert:
+            try:
+                c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) LIKE LOWER(?)", (f'%{expert_name}%',))
+                expert = c.fetchone()
+            except:
+                pass
+
+        # Se ainda não achou, erro
         if not expert:
             conn.close()
             return jsonify({"response": "Expert não encontrado"}), 404
