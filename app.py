@@ -69,8 +69,8 @@ for exp in experts_fixos:
 experts = migrar_experts_para_codigo(experts_dict)
 
 # Cria o motor relacional com o filtro ontológico
-motor = MotorRelacional(experts)
-
+motor = MotorRelacional(experts)motor = MotorRelacional(experts)
+motor_relacional = motor  # apelido para a rota de chat
 # Inicia o sincronizador (aprendizado coletivo automático)
 dna_base = DNABase()
 sinc = SincronizadorRelacional(memoria, dna_base)
