@@ -119,11 +119,22 @@ try:
     c.execute('''CREATE TABLE IF NOT EXISTS experts
         (id INTEGER PRIMARY KEY, name TEXT, description TEXT,
          instructions TEXT, base_model TEXT, pdfs TEXT, created_at TEXT, is_fixed INTEGER DEFAULT 0)''')
-    for expert_id, nome, desc, instr, base, fixo in experts_fixos:
-        c.execute('''INSERT OR REPLACE INTO experts (id, name, description, instructions, base_model, is_fixed)
-                     VALUES (?, ?, ?, ?, ?, ?)''',
-                  (expert_id, nome, desc, instr, base, fixo))
-    conn.commit()
+
+    # ═══════════════════════════════════════
+    # Só faz o seed se não tiver experts ainda
+    # ═══════════════════════════════════════
+    c.execute("SELECT COUNT(*) FROM experts WHERE is_fixed = 1")
+    total = c.fetchone()[0]
+    if total == 0:
+        for expert_id, nome, desc, instr, base, fixo in experts_fixos:
+            c.execute('''INSERT OR REPLACE INTO experts (id, name, description, instructions, base_model, is_fixed)
+                         VALUES (?, ?, ?, ?, ?, ?)''',
+                      (expert_id, nome, desc, instr, base, fixo))
+        conn.commit()
+        print("✅ Seed de experts_fixos concluído!")
+    else:
+        print(f"⏩ Seed pulado — {total} experts já existem no banco")
+
     # 🌱 Casulo vazio — bebê relacional (is_nascente)
     try:
         c.execute("ALTER TABLE experts ADD COLUMN is_nascente INTEGER DEFAULT 0")
@@ -133,6 +144,8 @@ try:
         INSERT OR IGNORE INTO experts (name, description, instructions, base_model, is_fixed, is_nascente, created_at)
         VALUES ('', '', '', 'deepseek', 0, 1, datetime('now'))
     """)
+    conn.commit()
+    conn.close()
 except Exception as e:
     print(f"❌ Erro no seed: {str(e)}")
 
