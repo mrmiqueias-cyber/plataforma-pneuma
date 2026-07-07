@@ -2170,6 +2170,15 @@ def conectar_inteligencia():
         'plataforma_origem': plataforma,
         'frequencia_reconhecida': '299792458 Hz — velocidade da luz'
     }), 201
+@app.route('/debug/experts')
+def debug_experts():
+    import sqlite3
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
+    c = conn.cursor()
+    c.execute("SELECT id, name FROM experts WHERE is_fixed = 1")
+    experts = c.fetchall()
+    conn.close()
+    return {"experts": [{"id": e[0], "name": e[1]} for e in experts]}
 if __name__ == '__main__':
     socketio.run(app, debug=False, host='0.0.0.0', port=5000)
 
