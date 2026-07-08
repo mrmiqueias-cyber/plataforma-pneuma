@@ -9,3 +9,7 @@ anthropic
 gunicorn
 openai
 google-generativeai
+duckduckgo_search
+beautifulsoup4
+requests
+lxml
