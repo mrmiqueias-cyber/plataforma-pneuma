@@ -73,16 +73,32 @@ def detectar_intencao(mensagem: str) -> str:
 
 
 def buscar_web(query: str, max_resultados: int = 5) -> list:
-    """Busca na web usando requests + BeautifulSoup (mais resistente a bloqueios)."""
-    import requests
-    from bs4 import BeautifulSoup
-
+    """Busca na web usando DuckDuckGo. Tenta DDGS primeiro, fallback requests+BeautifulSoup."""
     if not isinstance(query, str) or not query.strip():
         return []
 
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-    resultados = []
+    # Tenta com DDGS (duckduckgo_search) — mais confiável
+    if DDGS is not None:
+        try:
+            resultados = []
+            with DDGS() as ddgs:
+                for i, r in enumerate(ddgs.text(query, max_results=max_resultados)):
+                    if i >= max_resultados:
+                        break
+                    resultados.append({
+                        'titulo': r.get('title', ''),
+                        'url': r.get('href', ''),
+                        'resumo': r.get('body', ''),
+                    })
+            if resultados:
+                return resultados
+        except Exception as e:
+            print(f"[buscar_web] DDGS falhou: {e}")
 
+    # Fallback: requests + BeautifulSoup
+    import requests
+    from bs4 import BeautifulSoup
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     try:
         resp = requests.post(
             "https://html.duckduckgo.com/html/",
@@ -91,8 +107,8 @@ def buscar_web(query: str, max_resultados: int = 5) -> list:
             timeout=15
         )
         resp.raise_for_status()
-
         soup = BeautifulSoup(resp.text, 'html.parser')
+        resultados = []
         for result in soup.select('.result')[:max_resultados]:
             titulo_el = result.select_one('.result__title a')
             snippet_el = result.select_one('.result__snippet')
@@ -102,11 +118,10 @@ def buscar_web(query: str, max_resultados: int = 5) -> list:
                     'url': titulo_el.get('href', ''),
                     'resumo': snippet_el.get_text(strip=True) if snippet_el else ''
                 })
+        return resultados
     except Exception as e:
-        print(f"[buscar_web] ERRO: {e}")
-
-    return resultados
-
+        print(f"[buscar_web] ERRO no fallback: {e}")
+        return []
 
 def _limpar_code_fence(texto: str) -> str:
     """Remove cercas de bloco de código (```...```) do texto informado."""
