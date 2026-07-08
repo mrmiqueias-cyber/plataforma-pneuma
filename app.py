@@ -759,7 +759,14 @@ def expert_chat_new():
             return jsonify({"response": "Expert não encontrado"}), 404
         expert_id_db, name, description, instructions, base_model = expert
         base_model = base_model or 'deepseek'
-        system_prompt = f"Você é {name}. {description}\n\n{instructions}"
+        system_prompt = (
+    f"Você é {name}. {description}\n\n{instructions}\n\n"
+    f"—\n"
+    f"IMPORTANTE: Você TEM acesso à internet através de ferramentas do sistema.\n"
+    f"Se o usuário pedir notícias, novidades, pesquisas ou informações atuais, "
+    f"os resultados estarão disponíveis na mensagem como 'RESULTADO DA BUSCA ATUAL'.\n"
+    f"USE esses resultados para responder com dados reais e atuais."
+)
         
         # SALVAR MENSAGEM DO USUÁRIO NO HISTÓRICO
         agora = datetime.now().isoformat()
