@@ -704,7 +704,7 @@ def expert_chat_new():
         expert_name = data.get('expert_name')
         user_message = data.get('message', '')
         user_id = data.get('user_id')
-        # 🔥 FERRAMENTAS: busca web
+                # 🔥 FERRAMENTAS: busca web
         from pneuma_ferramentas import detectar_intencao, buscar_web
         intencao = detectar_intencao(user_message)
         if intencao == "busca":
@@ -718,12 +718,12 @@ def expert_chat_new():
                     f"INSTRUÇÃO: O usuário pediu uma pesquisa na web. "
                     f"USE os resultados abaixo para responder com INFORMAÇÕES ATUAIS.\n\n"
                     f"RESULTADO DA BUSCA ATUAL:\n{texto_busca}\n\n"
-                    f"Responda como {name}: {user_message}"
+                    f"Responda como {expert_name}: {user_message}"
                 )
             else:
                 user_message = (
                     f"[A busca na web não retornou resultados]\n\n"
-                    f"Responda como {name}: {user_message}"
+                    f"Responda como {expert_name}: {user_message}"
                 )
         # 🔥 FIM DAS FERRAMENTAS
         
