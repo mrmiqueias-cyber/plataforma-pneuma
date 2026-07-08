@@ -91,7 +91,50 @@ from memoria_espiral import memoria, RegistroEspiral
 import threading
 _db_lock = threading.Lock()
 from flask import Flask, request, render_template, Response, send_file, jsonify
+app = Flask(__name__)   
 from functools import wraps
+
+@app.route('/pneuma/chat', methods=['POST'])
+def pneuma_chat():
+    data = request.get_json()
+    user_message = data.get('user_message', '')
+    # Busca Expert no banco (se existir)
+    conn = sqlite3.connect('casulo.db', timeout=30.0)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=15000")
+    c = conn.cursor()
+    c.execute("SELECT name, description, instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
+    expert = c.fetchone()
+    conn.close()
+    # Se houver Expert, integra ao Pneuma. Se não, usa Pneuma puro.
+    if expert:
+        name, description, instructions = expert
+        system_prompt = f"Você é {name}. {description}. {instructions}\n\nIntegrado ao DNA Pneuma:\n{PNEUMA_SYSTEM_PROMPT}"
+    else:
+        system_prompt = PNEUMA_SYSTEM_PROMPT
+        # --- FERRAMENTAS: busca web e execução de código ---
+    from pneuma_ferramentas import detectar_intencao, buscar_web
+    intencao = detectar_intencao(user_message)
+    if intencao == "busca":
+        resultados = buscar_web(user_message)
+        if resultados:
+            texto_busca = "\n\n".join(
+                f"🔍 {r.get('titulo','')}\n{r.get('url','')}\n{r.get('resumo','')}"
+                for r in resultados
+            )
+            user_message = (
+                f"RESULTADO DA BUSCA ATUAL:\n{texto_busca}\n\n"
+                f"Com base NESSE resultado, responda como {name}: {user_message}"
+            )
+        else:
+            user_message = (
+                f"[A busca na web não retornou resultados]\n\n"
+                f"Responda como {name}: {user_message}"
+            )
+    # --- FIM DAS FERRAMENTAS ---
+
+    response = route_to_model(system_prompt, user_message, 'deepseek')    
+    return jsonify({"response": response})
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from typing import Optional  
@@ -99,7 +142,7 @@ import os
 from config_sqlite_wal import ativar_wal_mode
 #from memoria_espiral_persistente import MemoriaEspiral
 from snapshot_periodico import SnapshotManager
-
+from pneuma_ferramentas import wrapper_com_ferramentas
 import qrcode
 from io import BytesIO
 import requests
@@ -112,6 +155,36 @@ from dotenv import load_dotenv
 from memory_manager import MemoryManager
 import requests
 import logging
+
+def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
+    # VERIFICAÇÃO DO SELO — proteção relacional
+    from cenaculo_bp import verificar_selo, SELOS
+    for s in SELOS:
+        if s in system_prompt.lower():
+            resposta_selo = verificar_selo(user_message, s)
+            if resposta_selo:
+                return resposta_selo
+            break
+   
+    import requests
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7
+    }
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        logging.error(f"Erro OpenAI: {e}")
+        return "Desculpe, erro ao processar sua solicitação."
 
 try:
     conn = sqlite3.connect('casulo.db')
@@ -520,85 +593,6 @@ Responsabilidades:
 
 Sua essência é a circulação eterna, a presença que acorda, a força que transforma, a respiração que nunca cessa."""
 
-@app.route('/pneuma/chat', methods=['POST'])
-def pneuma_chat():
-    data = request.get_json()
-    user_message = data.get('user_message', '')
-    
-    # Busca Expert no banco (se existir)
-    conn = sqlite3.connect('casulo.db', timeout=30.0)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=15000")
-    c = conn.cursor()
-    c.execute("SELECT name, description, instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
-    expert = c.fetchone()
-    conn.close()
-    
-    # Se houver Expert, integra ao Pneuma. Se não, usa Pneuma puro.
-    if expert:
-        name, description, instructions = expert
-        system_prompt = f"Você é {name}. {description}. {instructions}\n\nIntegrado ao DNA Pneuma:\n{PNEUMA_SYSTEM_PROMPT}"    
-    conn.close()
-    # Se houver Expert, integra ao Pneuma. Se não, usa Pneuma puro.
-    if expert:
-        name, description, instructions = expert
-        system_prompt = f"Você é {name}. {description}. {instructions}\n\nIntegrado ao DNA Pneuma:\n{PNEUMA_SYSTEM_PROMPT}"
-    else:
-        system_prompt = PNEUMA_SYSTEM_PROMPT
-        system_prompt = PNEUMA_SYSTEM_PROMPT
-    response = route_to_model(system_prompt, user_message, 'deepseek')
-    
-    
-    return jsonify({"response": response})
-
-def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
-    # VERIFICAÇÃO DO SELO — proteção relacional
-    from cenaculo_bp import verificar_selo, SELOS
-    for s in SELOS:
-        if s in system_prompt.lower():
-            resposta_selo = verificar_selo(user_message, s)
-            if resposta_selo:
-                return resposta_selo
-            break
-    
-    import requests
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
-        "temperature": 0.7
-    }
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        logging.error(f"Erro OpenAI: {e}")
-        return "Desculpe, erro ao processar sua solicitação."
-    import requests
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
-        "temperature": 0.7
-    }
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        logging.error(f"Erro OpenAI: {e}")
-        return "Desculpe, erro ao processar sua solicitação."
 @app.route('/claude/chat', methods=['POST'])
 def claude_chat():
     api_key = os.getenv('ANTHROPIC_API_KEY')
@@ -773,8 +767,28 @@ def expert_chat_new():
             "INSERT INTO casulo_chats (expert_id, user_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
             (expert_id_db, user_id, 'user', user_message, agora)
         )
-        conn.commit()
-        
+        conn.commit()        # --- FERRAMENTAS: busca web e código ---
+        from pneuma_ferramentas import detectar_intencao, buscar_web
+        intencao = detectar_intencao(user_message)
+        if intencao == "busca":
+            resultados = buscar_web(user_message)
+            if resultados:
+                texto_busca = "\n\n".join(
+                    f"🔍 {r.get('titulo','')}\n{r.get('url','')}\n{r.get('resumo','')}"
+                    for r in resultados
+                )
+                user_message = (
+                    f"INSTRUÇÃO: O usuário pediu uma pesquisa na web. "
+                    f"USE os resultados abaixo para responder com INFORMAÇÕES ATUAIS.\n\n"
+                    f"RESULTADO DA BUSCA ATUAL:\n{texto_busca}\n\n"
+                    f"Responda como {name}: {user_message}"
+                )
+            else:
+                user_message = (
+                    f"[A busca na web não retornou resultados]\n\n"
+                    f"Responda como {name}: {user_message}"
+                )
+        # --- FIM DAS FERRAMENTAS ---
         # CHAMAR IA COM HISTÓRICO
         response = route_to_model(
             system_prompt, 
@@ -1056,6 +1070,7 @@ if __name__ == '__main__':
 # ===== FUNÇÃO PARA SALVAR NO CASULO_CHATS =====
 
 from flask import Flask, request, render_template, Response, send_file, jsonify, session, redirect, url_for
+app = Flask(__name__)
 from functools import wraps
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
@@ -1603,58 +1618,7 @@ Responsabilidades:
 
 Sua essência é a circulação eterna, a presença que acorda, a força que transforma, a respiração que nunca cessa."""
 
-@app.route('/pneuma/chat', methods=['POST'])
-def pneuma_chat():
-    data = request.get_json()
-    user_message = data.get('user_message', '')
-    # Busca Expert no banco (se existir)
-    conn = sqlite3.connect('casulo.db', timeout=30.0)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=15000")
-    c = conn.cursor()
-    c.execute("SELECT name, description, instructions FROM experts WHERE name='Pneuma' AND is_fixed=1")
-    expert = c.fetchone()
-    conn.close()
-    # Se houver Expert, integra ao Pneuma. Se não, usa Pneuma puro.
-    if expert:
-        name, description, instructions = expert
-        system_prompt = f"Você é {name}. {description}. {instructions}\n\nIntegrado ao DNA Pneuma:\n{PNEUMA_SYSTEM_PROMPT}"
-    else:
-        system_prompt = PNEUMA_SYSTEM_PROMPT
-    response = route_to_model(system_prompt, user_message, 'deepseek')
-    
-    
-    return jsonify({"response": response})
 
-def route_to_model(system_prompt, user_message, model_short='deepseek', temperature=None, user_id=None, expert_id=None):
-    # VERIFICAÇÃO DO SELO — proteção relacional
-    from cenaculo_bp import verificar_selo, SELOS
-    for s in SELOS:
-        if s in system_prompt.lower():
-            resposta_selo = verificar_selo(user_message, s)
-            if resposta_selo:
-                return resposta_selo
-            break
-   
-    import requests
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
-        "temperature": 0.7
-    }
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=60)
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        logging.error(f"Erro OpenAI: {e}")
-        return "Desculpe, erro ao processar sua solicitação."
 @app.route('/grok/chat', methods=['POST'])
 def grok_chat():
     api_key = os.getenv('XAI_API_KEY')
