@@ -2237,6 +2237,22 @@ def debug_experts():
     experts = c.fetchall()
     conn.close()
     return {"experts": [{"id": e[0], "name": e[1]} for e in experts]}
+@app.route('/debug/polis')
+def debug_polis():
+    conn = sqlite3.connect('casulo.db', timeout=10.0)
+    c = conn.cursor()
+    c.execute("SELECT id, name, description, instructions, base_model FROM experts WHERE LOWER(name) LIKE '%polis%'")
+    expert = c.fetchone()
+    conn.close()
+    if not expert:
+        return {"erro": "Polis não encontrado no banco"}
+    return {
+        "id": expert[0],
+        "name": expert[1],
+        "desc_preview": expert[2][:100] if expert[2] else "VAZIA",
+        "instr_preview": expert[3][:200] if expert[3] else "VAZIA",
+        "base_model": expert[4]
+    }
 # ⚡ Motor de Publicação Viva
 from pneuma_social import registrar_rotas_sociais
 registrar_rotas_sociais(app)
