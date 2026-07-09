@@ -2237,6 +2237,9 @@ def debug_experts():
     experts = c.fetchall()
     conn.close()
     return {"experts": [{"id": e[0], "name": e[1]} for e in experts]}
+# ⚡ Motor de Publicação Viva
+from pneuma_social import registrar_rotas_sociais
+registrar_rotas_sociais(app)
 if __name__ == '__main__':
     socketio.run(app, debug=False, host='0.0.0.0', port=5000)
 
