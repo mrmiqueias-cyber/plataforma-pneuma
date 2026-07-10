@@ -13,3 +13,6 @@ duckduckgo_search
 beautifulsoup4
 requests
 lxml
+playwright
+apscheduler
+flask

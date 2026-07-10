@@ -2256,6 +2256,10 @@ def debug_polis():
 # ⚡ Motor de Publicação Viva
 from pneuma_social import registrar_rotas_sociais
 registrar_rotas_sociais(app)
+from instagram_automation import init_app, instagram_bp
+
+# Depois de criar o app Flask
+init_app(app)
 if __name__ == '__main__':
     socketio.run(app, debug=False, host='0.0.0.0', port=5000)
 
