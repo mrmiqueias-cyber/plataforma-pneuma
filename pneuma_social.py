@@ -307,7 +307,7 @@ def GERAR_POST(expert_name, tema, plataforma="instagram"):
     )
 
             # Chama a IA real da Pneuma para gerar o texto
-        post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
+    post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
         # Adiciona hashtags ao final do post
         hashtags_str = " ".join(hashtags_padrao)
         post_completo = f"{post_texto}\n\n{hashtags_str}"
