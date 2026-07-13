@@ -2,7 +2,6 @@ import os
 import logging
 from datetime import datetime
 from typing import Optional
-
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Page, Browser, BrowserContext
 
 # Configuração de logging
@@ -12,11 +11,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("instagram_automation")
 
-
 class InstagramAutomation:
     """Classe principal de automação do Instagram usando Playwright."""
 
-    # Seletores atualizados (2025/2026) com fallbacks
+    # =====================================================
+    # SELETORES ATUALIZADOS (2025/2026) com fallbacks
+    # =====================================================
     SELETORES_ENTRAR_INICIAL = [
         'a[href="/accounts/login/"]',
         'button:has-text("Entrar")',
@@ -75,29 +75,51 @@ class InstagramAutomation:
         'textarea[aria-label="Escreva uma legenda..."]',
     ]
 
-    def __init__(self, username: str, password: str, headless: bool = True):
+    # ─────────────────────────────────────────────────────
+    # 🆕 MUDANÇA 1: __init__ agora aceita state_file
+    # ─────────────────────────────────────────────────────
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        headless: bool = True,
+        state_file: str = "instagram_state.json"
+    ):
         self.username = username
         self.password = password
         self.headless = headless
+        self.state_file = state_file  # ← ARQUIVO DE SESSÃO SALVA
         self.playwright = None
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
         self.ultimo_post: Optional[str] = None
 
+    # ─────────────────────────────────────────────────────
+    # 🆕 MUDANÇA 2: _iniciar_navegador carrega sessão salva
+    # ─────────────────────────────────────────────────────
     def _iniciar_navegador(self) -> None:
         """Inicia o Playwright e abre o navegador."""
         logger.info("Iniciando navegador Playwright (headless=%s)", self.headless)
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=self.headless)
-        self.context = self.browser.new_context(
-            viewport={"width": 1280, "height": 800},
-            locale="pt-BR",
-            user_agent=(
+
+        # Carrega sessão salva se existir
+        context_kwargs = {
+            "viewport": {"width": 1280, "height": 800},
+            "locale": "pt-BR",
+            "user_agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             ),
-        )
+        }
+        if os.path.exists(self.state_file):
+            context_kwargs["storage_state"] = self.state_file
+            logger.info("🟢 Sessão salva encontrada: %s", self.state_file)
+        else:
+            logger.info("🟡 Arquivo de sessão não encontrado (%s). Fará login normal.", self.state_file)
+
+        self.context = self.browser.new_context(**context_kwargs)
         self.page = self.context.new_page()
 
     def _clicar_com_fallback(self, seletores: list, timeout: int = 10000) -> bool:
@@ -152,13 +174,29 @@ class InstagramAutomation:
         logger.warning("Nenhum seletor de digitação funcionou: %s", seletores)
         return False
 
+    # ─────────────────────────────────────────────────────
+    # 🆕 MUDANÇA 3: login() tenta sessão primeiro
+    # ─────────────────────────────────────────────────────
     def login(self) -> bool:
-        """Realiza login no Instagram tratando popups de salvar informações e notificações."""
+        """Realiza login no Instagram.
+        PRIMEiro tenta usar a sessão salva.
+        Se não funcionar, faz login com usuário/senha e SALVA a sessão.
+        """
         try:
             self._iniciar_navegador()
+
             logger.info("Acessando instagram.com")
             self.page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
-            self.page.wait_for_timeout(3000)
+            self.page.wait_for_timeout(5000)
+
+            # 🆕 Verifica se já está logado pela sessão salva
+            url_atual = self.page.url.lower()
+            if "login" not in url_atual:
+                logger.info("✅ Sessão salva funcionou! Já estamos logados.")
+                return True
+
+            # Se chegou aqui, a sessão não funcionou → login manual
+            logger.info("⚠️ Sessão expirada. Fazendo login com usuário/senha...")
 
             # Clica em "Entrar" na página inicial (se necessário)
             self._clicar_com_fallback(self.SELETORES_ENTRAR_INICIAL, timeout=5000)
@@ -181,16 +219,24 @@ class InstagramAutomation:
 
             self.page.wait_for_timeout(5000)
 
-            # Trata popup "Salvar informações" -> "Agora não"
+            # Trata popup "Salvar informações" → "Agora não"
             self._clicar_com_fallback(self.SELETORES_SALVAR_INFO_NAO, timeout=5000)
             self.page.wait_for_timeout(2000)
 
-            # Trata popup "Ativar notificações" -> "Agora não"
+            # Trata popup "Ativar notificações" → "Agora não"
             self._clicar_com_fallback(self.SELETORES_NOTIFICACOES_NAO, timeout=5000)
             self.page.wait_for_timeout(2000)
 
+            # 🆕 Salva a sessão para usar da próxima vez
+            try:
+                self.context.storage_state(path=self.state_file)
+                logger.info("💾 Sessão salva em %s", self.state_file)
+            except Exception as e:
+                logger.warning("Não foi possível salvar sessão: %s", e)
+
             logger.info("Login realizado com sucesso para o usuário %s", self.username)
             return True
+
         except Exception as e:
             logger.error("Erro durante login: %s", e)
             return False
@@ -231,6 +277,7 @@ class InstagramAutomation:
             self.ultimo_post = datetime.now().isoformat()
             logger.info("Post publicado com sucesso. Legenda: %s", legenda[:50])
             return True
+
         except Exception as e:
             logger.error("Erro ao criar post: %s", e)
             return False
@@ -260,14 +307,11 @@ class InstagramAutomation:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-
 # ============================================================================
-# Módulo de Agendamento (instagram_scheduler.py integrado)
+# Módulo de Agendamento (integrado)
 # ============================================================================
-
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-
 
 # Estado global da automação
 _estado_automacao = {
@@ -279,7 +323,9 @@ _estado_automacao = {
 
 scheduler = BackgroundScheduler(daemon=True)
 
-
+# ────────────────────────────────────────────────────────────────────────────
+# 🆕 MUDANÇA 4: postar_como_expert passa state_file
+# ────────────────────────────────────────────────────────────────────────────
 def postar_como_expert(expert_nome: str, legenda: str) -> bool:
     """Função que chama o InstagramAutomation para postar como um expert específico."""
     username = os.getenv("INSTAGRAM_USER")
@@ -291,7 +337,14 @@ def postar_como_expert(expert_nome: str, legenda: str) -> bool:
         return False
 
     logger.info("Iniciando postagem para o expert %s", expert_nome)
-    automacao = InstagramAutomation(username=username, password=password, headless=True)
+
+    # 🆕 PASSA state_file PARA USAR A SESSÃO SALVA
+    automacao = InstagramAutomation(
+        username=username,
+        password=password,
+        headless=True,
+        state_file="instagram_state.json"
+    )
 
     try:
         if not automacao.login():
@@ -308,7 +361,9 @@ def postar_como_expert(expert_nome: str, legenda: str) -> bool:
         else:
             _estado_automacao["ultimo_erro"] = "Falha ao criar post"
             logger.error("Falha ao criar post para o expert %s", expert_nome)
+
         return sucesso
+
     except Exception as e:
         _estado_automacao["ultimo_erro"] = str(e)
         logger.error("Erro ao postar como expert %s: %s", expert_nome, e)
@@ -316,12 +371,10 @@ def postar_como_expert(expert_nome: str, legenda: str) -> bool:
     finally:
         automacao.close()
 
-
 def _agendar_post(expert_nome: str, legenda: str) -> None:
     """Callback interno dos jobs agendados."""
     logger.info("Executando job agendado para expert %s", expert_nome)
     postar_como_expert(expert_nome, legenda)
-
 
 def configurar_agendamentos() -> None:
     """Configura os agendamentos pré-definidos dos experts."""
@@ -333,7 +386,6 @@ def configurar_agendamentos() -> None:
         id="polis_terca_quinta",
         replace_existing=True,
     )
-
     # Onírico: quarta e sexta às 19h
     scheduler.add_job(
         _agendar_post,
@@ -342,7 +394,6 @@ def configurar_agendamentos() -> None:
         id="onirico_quarta_sexta",
         replace_existing=True,
     )
-
     # Pneuma: todo dia às 6h
     scheduler.add_job(
         _agendar_post,
@@ -351,30 +402,25 @@ def configurar_agendamentos() -> None:
         id="pneuma_diario",
         replace_existing=True,
     )
-
     logger.info("Agendamentos configurados: Polis (ter/qui 8h), Onírico (qua/sex 19h), Pneuma (diário 6h)")
-
 
 def obter_proximo_post() -> Optional[str]:
     """Retorna a data/hora do próximo post agendado."""
     try:
         proximo = scheduler.get_next_job_run_time()
-        return proxiso.isoformat() if proximo else None
+        return proximo.isoformat() if proximo else None
     except Exception:
         return None
-
 
 def iniciar_scheduler() -> None:
     """Inicia o scheduler se as credenciais estiverem configuradas."""
     if not os.getenv("INSTAGRAM_USER"):
         logger.info("INSTAGRAM_USER não configurada. Scheduler não iniciado.")
         return
-
     if not scheduler.running:
         configurar_agendamentos()
         scheduler.start()
         logger.info("Scheduler do Instagram iniciado.")
-
 
 def parar_scheduler() -> None:
     """Para o scheduler gracefully."""
@@ -382,15 +428,12 @@ def parar_scheduler() -> None:
         scheduler.shutdown(wait=False)
         logger.info("Scheduler do Instagram parado.")
 
-
 # ============================================================================
 # Integração com Flask (Blueprint)
 # ============================================================================
-
 from flask import Blueprint, jsonify, request
 
 instagram_bp = Blueprint("instagram", __name__, url_prefix="/instagram")
-
 
 @instagram_bp.route("/status", methods=["GET"])
 def status_automacao():
@@ -409,7 +452,6 @@ def status_automacao():
             for job in scheduler.get_jobs()
         ],
     })
-
 
 @instagram_bp.route("/postar", methods=["POST"])
 def postar_agora():
@@ -441,7 +483,6 @@ def postar_agora():
             "sucesso": False,
             "erro": _estado_automacao["ultimo_erro"] or "Falha ao publicar post.",
         }), 500
-
 
 def init_app(app):
     """Inicializa o scheduler e registra o blueprint no app Flask."""
