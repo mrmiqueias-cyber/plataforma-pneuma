@@ -304,7 +304,7 @@ def GERAR_POST(expert_name, tema, plataforma="instagram"):
     # Respeita o limite de caracteres da plataforma
     limite = LIMITE_CARACTERES[plataforma]
     if len(post_completo) > limite:
-        # Corta preservando espaço para as hashtags
+        # Corta preservando espaco para as hashtags
         espaco_hashtags = len(hashtags_str) + 2  # "\n\n"
         texto_cortado = post_texto[: limite - espaco_hashtags].rstrip()
         post_completo = f"{texto_cortado}\n\n{hashtags_str}"
