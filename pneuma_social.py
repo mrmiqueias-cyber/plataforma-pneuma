@@ -18,6 +18,9 @@ Estrutura:
 import os
 import sqlite3
 import random
+# Importa o publicador real do Instagram
+from publicador_instagram import PublicadorInstagram
+publicador = PublicadorInstagram()
 from datetime import datetime
 from flask import request, jsonify
 
@@ -181,7 +184,10 @@ CONFIG_SOCIAL = {
 
 # Caminho do banco SQLite (mesma estrutura do app.py)
 DB_PATH = os.environ.get("PNEUMA_DB_PATH", "pneuma.db")
-
+LIMITE_CARACTERES = {
+    "instagram": 2200,
+    "twitter": 280,
+}
 
 # ---------------------------------------------------------------------------
 # Funções auxiliares de banco (mesma estrutura do app.py)
@@ -300,11 +306,8 @@ def GERAR_POST(expert_name, tema, plataforma="instagram"):
         f"Escreva um post autêntico, no seu tom, abordando o tema.\n"
     )
 
-    # Roteia o prompt para o modelo (simulado aqui)
-    route_to_model(prompt, expert_name=expert_name)
-
-    # Geração simulada do post (em produção, o LLM responderia ao prompt)
-    post_texto = _gerar_texto_simulado(expert_name, formato, tema, temas_preferidos)
+    # Chama a IA real da Pneuma para gerar o texto
+post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
 
     # Adiciona hashtags ao final do post
     hashtags_str = " ".join(hashtags_padrao)
@@ -355,64 +358,44 @@ def _gerar_texto_simulado(expert_name, formato, tema, temas_preferidos):
 
 
 # ---------------------------------------------------------------------------
+def GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma="instagram"):
+    """
+    Gera o texto do post chamando a IA real da Pneuma.
+    Usa o mesmo modelo/endpoint do chat.
+    """
+    from app import route_to_model  # ou o import que funcionar no seu app
+
+    limite = 2200 if plataforma == "instagram" else 280
+    prompt = (
+        f"Você é {expert_name}, um expert da plataforma Pneuma.\n"
+        f"Tom de voz: {formato}.\n"
+        f"Temas preferidos: {', '.join(temas_preferidos)}.\n"
+        f"Escreva UM POST CURTO para {plataforma} (max {limite} caracteres) "
+        f"sobre o tema: {tema}.\n"
+        f"Nao use hashtags no texto. Seja autentico e profundo.\n"
+        f"Post:"
+    )
+    # Chama o mesmo roteador que o chat usa
+    texto_gerado = route_to_model(prompt, expert_name=expert_name)
+    return texto_gerado[:limite]
 # 3. PUBLICAR — Simula a publicação em redes sociais
 # ---------------------------------------------------------------------------
 def PUBLICAR(texto, plataforma, expert_name=None):
-    """
-    Simula a publicação de um post em rede social.
-
-    Parâmetros:
-        texto (str): texto do post gerado
-        plataforma (str): "instagram" ou "twitter"
-        expert_name (str): nome do expert (para validar conta vinculada)
-
-    Retorna:
-        dict: { status, post, expert, plataforma, mensagem }
-    """
-    plataforma = (plataforma or "instagram").lower()
-
-    # Verifica se o expert tem conta vinculada na plataforma
-    if expert_name:
-        config = CONFIG_SOCIAL.get(expert_name)
-        if not config:
-            return {
-                "status": "erro",
-                "post": texto,
-                "expert": expert_name,
-                "plataforma": plataforma,
-                "mensagem": f"Expert '{expert_name}' não encontrado na configuração social.",
-            }
-
-        conta = config.get(plataforma)
-        if not conta:
-            return {
-                "status": "erro",
-                "post": texto,
-                "expert": expert_name,
-                "plataforma": plataforma,
-                "mensagem": (
-                    f"{expert_name} não possui conta vinculada em {plataforma}. "
-                    f"Vincule uma conta antes de publicar."
-                ),
-            }
-
-    # Estrutura preparada para futura integração com:
-    #   - Meta Graph API (Instagram)
-    #   - X API v2 (Twitter/X)
-    # Por enquanto, apenas simula a publicação.
-    publicacao_id = f"pub_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-
-    return {
-        "status": "publicado",
-        "post": texto,
-        "expert": expert_name,
-        "plataforma": plataforma,
-        "publicacao_id": publicacao_id,
-        "mensagem": f"Post simulado publicado em {plataforma} com sucesso.",
-    }
-
-
-# ---------------------------------------------------------------------------
+    """Publica de verdade no Instagram via instagrapi."""
+    if plataforma != "instagram":
+        return {
+            "status": "erro", "post": texto,
+            "expert": expert_name, "plataforma": plataforma,
+            "mensagem": f"Plataforma '{plataforma}' ainda nao implementada."
+        }
+    config = CONFIG_SOCIAL.get(expert_name) if expert_name else None
+    if not config:
+        return {
+            "status": "erro", "post": texto,
+            "expert": expert_name, "plataforma": plataforma,
+            "mensagem": f"Expert '{expert_name}' nao encontrado."
+        }
+    return publicador.postar(texto, expert_name)# ---------------------------------------------------------------------------
 # 6. LISTAR — Lista experts com contas sociais configuradas
 # ---------------------------------------------------------------------------
 def listar_experts_sociais():

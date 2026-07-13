@@ -1,7 +1,7 @@
 flask
 flask-cors
 flask-socketio
-requests
+requesats
 python-dotenv
 qrcode
 pillow
@@ -16,3 +16,5 @@ lxml
 playwright
 apscheduler
 flask
+instagrapi==2.1.1
+pillow==12.3.0
