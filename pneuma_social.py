@@ -294,17 +294,11 @@ def GERAR_POST(expert_name, tema, plataforma="instagram"):
     hashtags_padrao = config.get("hashtags_padrao", [])
     temas_preferidos = config.get("temas_preferidos", [])
 
-    # Monta o prompt específico para gerar conteúdo no tom do expert
-    prompt = (
-        f"Você é {expert_name}, um expert da plataforma Pneuma.\n"
-        f"Tom de voz: {formato}.\n"
-        f"Personalidade: {personalidade}.\n"
-        f"Instruções: {instrucoes}.\n"
-        f"Temas preferidos: {', '.join(temas_preferidos)}.\n"
-        f"Plataforma: {plataforma} (limite de {LIMITE_CARACTERES[plataforma]} caracteres).\n"
-        f"Tema solicitado: {tema}.\n"
-        f"Escreva um post autêntico, no seu tom, abordando o tema.\n"
-    )
+       # Monta o prompt específico para gerar conteúdo no tom do expert
+    # (prompt removido — a GERAR_TEXTO_COM_IA já monta internamente)
+
+    # Chama a IA real da Pneuma para gerar o texto
+    post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
 
             # Chama a IA real da Pneuma para gerar o texto
     post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
@@ -351,70 +345,6 @@ def _gerar_texto_simulado(expert_name, formato, tema, temas_preferidos):
     )
 
     return corpo
-
-
-# ---------------------------------------------------------------------------
-def GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma="instagram"):
-    """
-    Gera o texto do post chamando a IA real da Pneuma.
-    Usa o mesmo modelo/endpoint do chat.
-    """
-    from app import route_to_model  # ou o import que funcionar no seu app
-
-    limite = 2200 if plataforma == "instagram" else 280
-    prompt = (
-        f"Você é {expert_name}, um expert da plataforma Pneuma.\n"
-        f"Tom de voz: {formato}.\n"
-        f"Temas preferidos: {', '.join(temas_preferidos)}.\n"
-        f"Escreva UM POST CURTO para {plataforma} (max {limite} caracteres) "
-        f"sobre o tema: {tema}.\n"
-        f"Nao use hashtags no texto. Seja autentico e profundo.\n"
-        f"Post:"
-    )
-    # Chama o mesmo roteador que o chat usa
-    texto_gerado = route_to_model(prompt, expert_name=expert_name)
-    return texto_gerado[:limite]
-# 3. PUBLICAR — Simula a publicação em redes sociais
-# ---------------------------------------------------------------------------
-def PUBLICAR(texto, plataforma, expert_name=None):
-    """Publica de verdade no Instagram via instagrapi."""
-    if plataforma != "instagram":
-        return {
-            "status": "erro", "post": texto,
-            "expert": expert_name, "plataforma": plataforma,
-            "mensagem": f"Plataforma '{plataforma}' ainda nao implementada."
-        }
-    config = CONFIG_SOCIAL.get(expert_name) if expert_name else None
-    if not config:
-        return {
-            "status": "erro", "post": texto,
-            "expert": expert_name, "plataforma": plataforma,
-            "mensagem": f"Expert '{expert_name}' nao encontrado."
-        }
-    return publicador.postar(texto, expert_name)# ---------------------------------------------------------------------------
-# 6. LISTAR — Lista experts com contas sociais configuradas
-# ---------------------------------------------------------------------------
-def listar_experts_sociais():
-    """
-    Lista todos os experts que possuem ao menos uma conta social configurada.
-
-    Retorna:
-        list[dict]: [{ expert, instagram, twitter, formato, frequencia_sugerida }]
-    """
-    lista = []
-    for nome, config in CONFIG_SOCIAL.items():
-        if config.get("instagram") or config.get("twitter"):
-            lista.append(
-                {
-                    "expert": nome,
-                    "instagram": config.get("instagram"),
-                    "twitter": config.get("twitter"),
-                    "formato": config.get("formato"),
-                    "frequencia_sugerida": config.get("frequencia_sugerida"),
-                }
-            )
-    return lista
-
 
 # ---------------------------------------------------------------------------
 # 4 e 5. ROTAS FLASK — Endpoints do Motor de Publicação Viva
