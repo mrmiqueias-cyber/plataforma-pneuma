@@ -217,7 +217,7 @@ def buscar_expert_no_banco(expert_name):
         conexao.close()
 
         if linha:
-            return {
+        return {
                 "nome": linha["nome"],
                 "personalidade": linha["personalidade"] or "",
                 "instrucoes": linha["instrucoes"] or "",
@@ -294,25 +294,25 @@ def GERAR_POST(expert_name, tema, plataforma="instagram"):
     hashtags_padrao = config.get("hashtags_padrao", [])
     temas_preferidos = config.get("temas_preferidos", [])
 
-       # Monta o prompt específico para gerar conteúdo no tom do expert
+    # Monta o prompt específico para gerar conteúdo no tom do expert
     # (prompt removido — a GERAR_TEXTO_COM_IA já monta internamente)
-
     # Chama a IA real da Pneuma para gerar o texto
     post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
+    # Adiciona hashtags ao final do post
+    hashtags_str = " ".join(hashtags_padrao)
+    post_completo = f"{post_texto}\n\n{hashtags_str}"
+    # Respeita o limite de caracteres da plataforma
+    limite = LIMITE_CARACTERES[plataforma]
+    if len(post_completo) > limite:
+        # Corta preservando espaço para as hashtags
+        espaco_hashtags = len(hashtags_str) + 2  # "
 
-            # Chama a IA real da Pneuma para gerar o texto
-    post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
-        # Adiciona hashtags ao final do post
-        hashtags_str = " ".join(hashtags_padrao)
-        post_completo = f"{post_texto}\n\n{hashtags_str}"
-        # Respeita o limite de caracteres da plataforma
-        limite = LIMITE_CARACTERES[plataforma]
-        if len(post_completo) > limite:
-            # Corta preservando espaço para as hashtags
-            espaco_hashtags = len(hashtags_str) + 2  # "\n\n"
-            texto_cortado = post_texto[: limite - espaco_hashtags].rstrip()
-            post_completo = f"{texto_cortado}\n\n{hashtags_str}"
-        return {
+"
+        texto_cortado = post_texto[: limite - espaco_hashtags].rstrip()
+        post_completo = f"{texto_cortado}\n\n{hashtags_str}"
+
+{hashtags_str}"
+    return {
             "post": post_completo,
             "expert": expert_name,
             "plataforma": plataforma,
