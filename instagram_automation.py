@@ -328,25 +328,25 @@ scheduler = BackgroundScheduler(daemon=True)
 # ────────────────────────────────────────────────────────────────────────────
 def postar_como_expert(expert_nome: str, legenda: str) -> bool:
     """Função que chama o InstagramAutomation para postar como um expert específico."""
-    print("=== DIAGNÓSTICO: postar_como_expert iniciou ===")
+    logger.info("=== DIAGNÓSTICO: postar_como_expert iniciou ===")
     username = os.getenv("INSTAGRAM_USER")
     password = os.getenv("INSTAGRAM_PASS")
-    print(f"=== DIAGNÓSTICO: INSTAGRAM_USER = {username} ===")
+    logger.info(f"=== DIAGNÓSTICO: INSTAGRAM_USER = {username} ===")
         # 🆕 Cria o arquivo de sessão a partir da variável de ambiente, se existir
     state_file = "instagram_state.json"
     estado_base64 = os.getenv("INSTAGRAM_STATE")
-    print(f"=== DIAGNÓSTICO: INSTAGRAM_STATE tem {len(estado_base64) if estado_base64 else 0} caracteres ===")
+    logger.info(f"=== DIAGNÓSTICO: INSTAGRAM_STATE tem {len(estado_base64) if estado_base64 else 0} caracteres ===")
     if estado_base64:
-        print("=== DIAGNÓSTICO: INSTAGRAM_STATE ENCONTRADA! ===")
+        logger.info("=== DIAGNÓSTICO: INSTAGRAM_STATE ENCONTRADA! ===")
         try:
             with open(state_file, "wb") as f:
                 f.write(base64.b64decode(estado_base64))
-            print(f"=== DIAGNÓSTICO: state_file CRIADO: {state_file} ===")
+            logger.info(f"=== DIAGNÓSTICO: state_file CRIADO: {state_file} ===")
             logger.info("✅ Arquivo de sessão criado a partir de INSTAGRAM_STATE")
         except Exception as e:
             logger.warning("Não foi possível criar sessão a partir da env var: %s", e)
     else:
-        print("=== DIAGNÓSTICO: INSTAGRAM_STATE NÃO ENCONTRADA ===")
+        logger.info("=== DIAGNÓSTICO: INSTAGRAM_STATE NÃO ENCONTRADA ===")
 
     # 🆕 PASSA state_file PARA USAR A SESSÃO SALVA
     automacao = InstagramAutomation(
