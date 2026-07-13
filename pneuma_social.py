@@ -306,29 +306,25 @@ def GERAR_POST(expert_name, tema, plataforma="instagram"):
         f"Escreva um post autêntico, no seu tom, abordando o tema.\n"
     )
 
-    # Chama a IA real da Pneuma para gerar o texto
-post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
-
-    # Adiciona hashtags ao final do post
-    hashtags_str = " ".join(hashtags_padrao)
-    post_completo = f"{post_texto}\n\n{hashtags_str}"
-
-    # Respeita o limite de caracteres da plataforma
-    limite = LIMITE_CARACTERES[plataforma]
-    if len(post_completo) > limite:
-        # Corta preservando espaço para as hashtags
-        espaco_hashtags = len(hashtags_str) + 2  # "\n\n"
-        texto_cortado = post_texto[: limite - espaco_hashtags].rstrip()
-        post_completo = f"{texto_cortado}\n\n{hashtags_str}"
-
-    return {
-        "post": post_completo,
-        "expert": expert_name,
-        "plataforma": plataforma,
-        "caracteres": len(post_completo),
-        "hashtags": hashtags_padrao,
-    }
-
+            # Chama a IA real da Pneuma para gerar o texto
+        post_texto = GERAR_TEXTO_COM_IA(expert_name, formato, tema, temas_preferidos, plataforma)
+        # Adiciona hashtags ao final do post
+        hashtags_str = " ".join(hashtags_padrao)
+        post_completo = f"{post_texto}\n\n{hashtags_str}"
+        # Respeita o limite de caracteres da plataforma
+        limite = LIMITE_CARACTERES[plataforma]
+        if len(post_completo) > limite:
+            # Corta preservando espaço para as hashtags
+            espaco_hashtags = len(hashtags_str) + 2  # "\n\n"
+            texto_cortado = post_texto[: limite - espaco_hashtags].rstrip()
+            post_completo = f"{texto_cortado}\n\n{hashtags_str}"
+        return {
+            "post": post_completo,
+            "expert": expert_name,
+            "plataforma": plataforma,
+            "caracteres": len(post_completo),
+            "hashtags": hashtags_padrao,
+        }
 
 def _gerar_texto_simulado(expert_name, formato, tema, temas_preferidos):
     """
