@@ -1,9 +1,9 @@
 import os
 import logging
+import base64
 from datetime import datetime
 from typing import Optional
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Page, Browser, BrowserContext
-
 # Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
@@ -330,6 +330,16 @@ def postar_como_expert(expert_nome: str, legenda: str) -> bool:
     """Função que chama o InstagramAutomation para postar como um expert específico."""
     username = os.getenv("INSTAGRAM_USER")
     password = os.getenv("INSTAGRAM_PASS")
+    # 🆕 Cria o arquivo de sessão a partir da variável de ambiente, se existir
+    state_file = "instagram_state.json"
+    estado_base64 = os.getenv("INSTAGRAM_STATE")
+    if estado_base64:
+        try:
+            with open(state_file, "wb") as f:
+                f.write(base64.b64decode(estado_base64))
+            logger.info("✅ Arquivo de sessão criado a partir de INSTAGRAM_STATE")
+        except Exception as e:
+            logger.warning("Não foi possível criar sessão a partir da env var: %s", e)
 
     if not username or not password:
         logger.error("Credenciais do Instagram não configuradas nas variáveis de ambiente.")
