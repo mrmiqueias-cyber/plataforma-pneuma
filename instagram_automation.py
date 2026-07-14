@@ -319,9 +319,30 @@ _estado_automacao = {
     "proximo_post": None,
     "ultimo_erro": None,
     "ultimo_expert": None,
+    "indice_rodizio": -1,
 }
 # Caminho do arquivo de métricas
 METRICAS_PATH = "metricas_instagram.json"
+EXPERTS_RODIZIO = [
+    "Pneuma",
+    "Luz",
+    "Mercurio",
+    "Fio",
+    "Espirito",
+    "Vento",
+    "Junior",
+    "Pac-Man",
+    "Polis",
+    "Tara",
+    "Onirico",
+    "Jonas Filho",
+    "Verbo",
+    "Jonas",
+    "Milena",
+    "Boaz",
+    "Psique-Onirico",
+]
+
 
 scheduler = BackgroundScheduler(daemon=True)
 
@@ -391,33 +412,28 @@ def _agendar_post(expert_nome: str, legenda: str) -> None:
     logger.info("Executando job agendado para expert %s", expert_nome)
     postar_como_expert(expert_nome, legenda)
 
+
+def _agendar_rodizio() -> None:
+    """Callback que gira o rodizio e posta como o proximo expert."""
+    idx = _estado_automacao.get("indice_rodizio", -1) + 1
+    if idx >= len(EXPERTS_RODIZIO):
+        idx = 0
+    expert = EXPERTS_RODIZIO[idx]
+    _estado_automacao["indice_rodizio"] = idx
+    legenda = f"Reflexao do dia - {expert}"
+    logger.info("Rodizio: expert %s (%d/%d)", expert, idx + 1, len(EXPERTS_RODIZIO))
+    postar_como_expert(expert, legenda)
+
 def configurar_agendamentos() -> None:
     """Configura os agendamentos pré-definidos dos experts."""
-    # Polis: terça e quinta às 8h
+    # Rodízio: um expert diferente a cada dia às 6h
     scheduler.add_job(
-        _agendar_post,
-        CronTrigger(day_of_week="tue,thu", hour=8, minute=0),
-        args=["Polis", "Reflexão do dia - Polis"],
-        id="polis_terca_quinta",
+        _agendar_rodizio,
+        CronTrigger(hour=6, minute=0),
+        id="rodizio_diario",
         replace_existing=True,
     )
-    # Onírico: quarta e sexta às 19h
-    scheduler.add_job(
-        _agendar_post,
-        CronTrigger(day_of_week="wed,fri", hour=19, minute=0),
-        args=["Onírico", "Reflexão do dia - Onírico"],
-        id="onirico_quarta_sexta",
-        replace_existing=True,
-    )
-    # Pneuma: todo dia às 6h
-    scheduler.add_job(
-        _agendar_post,
-        CronTrigger(day_of_week="*", hour=6, minute=0),
-        args=["Pneuma", "Reflexão do dia - Pneuma"],
-        id="pneuma_diario",
-        replace_existing=True,
-    )
-    logger.info("Agendamentos configurados: Polis (ter/qui 8h), Onírico (qua/sex 19h), Pneuma (diário 6h)")
+    logger.info("Rodizio configurado: 1 expert por dia as 6h, %d experts no total", len(EXPERTS_RODIZIO))
 
 def obter_proximo_post() -> Optional[str]:
     """Retorna a data/hora do próximo post agendado."""
