@@ -217,7 +217,7 @@ def buscar_expert_no_banco(expert_name):
         conexao.close()
 
         if linha:
-        return {
+            return {
                 "nome": linha["nome"],
                 "personalidade": linha["personalidade"] or "",
                 "instrucoes": linha["instrucoes"] or "",
