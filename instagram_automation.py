@@ -102,12 +102,25 @@ class InstagramAutomation:
         """Inicia o Playwright e abre o navegador."""
         logger.info("Iniciando navegador Playwright (headless=%s)", self.headless)
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=self.headless)
+        self.browser = self.playwright.chromium.launch(
+        headless=self.headless,
+        args=[
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-blink-features=AutomationControlled",
+            "--disable-features=IsolateOrigins,site-per-process",
+            "--disable-web-security",
+            "--disable-features=BlockInsecurePrivateNetworkRequests",
+        ]
+    )
 
         # Carrega sessão salva se existir
         context_kwargs = {
             "viewport": {"width": 1280, "height": 800},
             "locale": "pt-BR",
+            "device_scale_factor": 1,
+            "has_touch": False,
+            "is_mobile": False,
             "user_agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -121,6 +134,22 @@ class InstagramAutomation:
 
         self.context = self.browser.new_context(**context_kwargs)
         self.page = self.context.new_page()
+
+        # 🛡️ Anti-detecção: esconde que é robô
+        self.page.add_init_script("""
+        // Override the navigator.webdriver flag
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        // Override chrome.runtime (real Chrome has this)
+        window.chrome = { runtime: {} };
+        // Override permissions
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (params) => (
+            params.name === 'notifications' ?
+            Promise.resolve({ state: 'prompt' }) :
+            originalQuery(params)
+        );
+        """)
+        logger.info("🛡️ Script anti-detecção injetado")
 
     def _clicar_com_fallback(self, seletores: list, timeout: int = 10000) -> bool:
         """Tenta clicar em um elemento usando uma lista de seletores alternativos."""
@@ -190,7 +219,9 @@ class InstagramAutomation:
             self.page.wait_for_timeout(5000)
 
             # 🆕 Verifica se já está logado pela sessão salva
-            url_atual = self.page.url.lower()
+            # 🛡️ Reforça anti-detecção antes de verificar login
+        self.page.evaluate("Object.defineProperty(navigator, 'webdriver', { get: () => undefined })")
+        url_atual = self.page.url.lower()
             if "login" not in url_atual:
                 logger.info("✅ Sessão salva funcionou! Já estamos logados.")
                 return True
