@@ -220,8 +220,8 @@ class InstagramAutomation:
 
             # 🆕 Verifica se já está logado pela sessão salva
             # 🛡️ Reforça anti-detecção antes de verificar login
-        self.page.evaluate("Object.defineProperty(navigator, 'webdriver', { get: () => undefined })")
-        url_atual = self.page.url.lower()
+            self.page.evaluate("Object.defineProperty(navigator, 'webdriver', { get: () => undefined })")
+            url_atual = self.page.url.lower()
             if "login" not in url_atual:
                 logger.info("✅ Sessão salva funcionou! Já estamos logados.")
                 return True
